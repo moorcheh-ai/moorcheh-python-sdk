@@ -21,13 +21,16 @@ Install the SDK using pip (once published to PyPI):
 pip install moorcheh-sdk
 ```
 (Note: Package not yet published to PyPI)
-Alternatively, install directly from the GitHub repository:pip install git+[https://github.com/mjfekri/moorcheh-python-sdk.git](https://github.com/mjfekri/moorcheh-python-sdk.git)
 
+Alternatively, install directly from the GitHub repository:
+```bash
+pip install git [https://github.com/mjfekri/moorcheh-python-sdk.git]
+```
 ## Usage
 It's recommended to use a virtual environment. If you clone the repository, you can use Poetry for easy setup and dependency management:
 
 ```bash
-git clone [https://github.com/mjfekri/moorcheh-python-sdk.git](https://github.com/mjfekri/moorcheh-python-sdk.git) 
+git clone [https://github.com/mjfekri/moorcheh-python-sdk.git]
 cd moorcheh-python-sdk
 poetry install
 ```
