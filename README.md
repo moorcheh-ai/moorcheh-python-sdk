@@ -19,149 +19,98 @@ Install the SDK using pip (once published to PyPI):
 
 ```bash
 pip install moorcheh-sdk
-(Note: Package not yet published to PyPI)Alternatively, install directly from the GitHub repository:pip install git+[https://github.com/your-username/moorcheh-python-sdk.git](https://github.com/your-username/moorcheh-python-sdk.git) # Replace with your actual repo URL
-It's recommended to use a virtual environment. If you clone the repository, you can use Poetry:git clone [https://github.com/your-username/moorcheh-python-sdk.git](https://github.com/your-username/moorcheh-python-sdk.git)
+```
+(Note: Package not yet published to PyPI)
+Alternatively, install directly from the GitHub repository:pip install git+[https://github.com/mjfekri/moorcheh-python-sdk.git](https://github.com/mjfekri/moorcheh-python-sdk.git)
+
+## Usage
+It's recommended to use a virtual environment. If you clone the repository, you can use Poetry for easy setup and dependency management:
+
+```bash
+git clone [https://github.com/mjfekri/moorcheh-python-sdk.git](https://github.com/mjfekri/moorcheh-python-sdk.git) 
 cd moorcheh-python-sdk
 poetry install
-AuthenticationThe SDK requires a Moorcheh API key for authentication.Obtain an API Key: Sign up and generate an API key through the Moorcheh platform dashboard (link to be added).Provide the Key: You can provide the key in two ways:Environment Variable (Recommended): Set the MOORCHEH_API_KEY environment variable.# Linux/macOS/Git Bash
+```
+
+## Authentication
+The SDK requires a Moorcheh API key for authentication. Obtain an API Key: Sign up and generate an API key through the Moorcheh.ai [https://moorcheh.ai] platform dashboard. 
+Provide the Key: The recommended way is to set the MOORCHEH_API_KEY environment variable:
+Linux/macOS/Git Bash:
+```bash
 export MOORCHEH_API_KEY="YOUR_API_KEY_HERE"
-
-# Windows PowerShell
+```
+Windows PowerShell:
+```powershell
 $env:MOORCHEH_API_KEY = "YOUR_API_KEY_HERE"
-
-# Windows CMD
+```
+Windows CMD:
+```bash
 set MOORCHEH_API_KEY=YOUR_API_KEY_HERE
-Directly to Client: Pass the key when initializing the client (less secure for shared code):from moorcheh_sdk import MoorchehClient
-client = MoorchehClient(api_key="YOUR_API_KEY_HERE")
-The client will prioritize the key passed directly, then check the environment variable.Quick Startimport os
-import sys
-import json
-import random # For generating example vectors
-from moorcheh_sdk import (
-    MoorchehClient,
-    MoorchehError,
-    AuthenticationError,
-    InvalidInputError,
-    NamespaceNotFound,
-    ConflictError,
-    APIError,
-)
+```
+The client will automatically read this environment variable upon initialization.
 
-def run_quickstart():
-    print("--- Moorcheh SDK Quick Start ---")
+Alternatively, you can pass the key directly to the constructor (MoorchehClient(api_key="...")), but using environment variables is generally preferred for security. 
 
-    try:
-        # Initialize client (reads MOORCHEH_API_KEY from env)
-        client = MoorchehClient()
-        print(f"Client initialized. Targeting base URL: {client.base_url}")
+## Quick Start:
+A comprehensive quick start script is available in the examples/ directory. This script demonstrates the core workflow: creating namespaces, uploading data, searching, and deleting items. To run the quick start example:
+Clone the repository (if you haven't already):
+```bash
+git clone [https://github.com/mjfekri/moorcheh-python-sdk.git](https://github.com/mjfekri/moorcheh-python-sdk.git) 
+cd moorcheh-python-sdk
+```
+Install dependencies using Poetry: 
+```bash
+poetry install
+```
+Set your API Key as an environment variable (see Authentication section above) in your current terminal session. 
+Run the script using poetry run:
+```bash
+poetry run python examples/quick_start.py
+```
+The script will print output to the console showing the results of each API call. 
 
-        # Use context manager for automatic cleanup
-        with client:
-            # --- 1. Create Namespaces ---
-            text_ns_name = "sdk-quickstart-text"
-            vector_ns_name = "sdk-quickstart-vector"
-            vector_dim = 10 # Example dimension
+## API Client Methods
+The `MoorchehClient` class provides the following methods corresponding to the API v1 endpoints:
+### Namespace Management:
+```python
+create_namespace(namespace_name, type, vector_dimension=None)
+```
+```python
+list_namespaces()
+```
+```python
+delete_namespace(namespace_name)
+```
+### Data Ingestion:
+```python
+upload_documents(namespace_name, documents) - For text namespaces (async processing).
+```
+```python
+upload_vectors(namespace_name, vectors) - For vector namespaces (sync processing).
+```
+### Semantic Search
+```python
+search(namespaces, query, top_k=10, threshold=None, kiosk_mode=False) - Handles text or vector queries.
+```
 
-            try:
-                print(f"\nCreating text namespace: {text_ns_name}")
-                client.create_namespace(namespace_name=text_ns_name, type="text")
-                print(f"Namespace '{text_ns_name}' created.")
-            except ConflictError:
-                print(f"Namespace '{text_ns_name}' already exists.")
+### Data Deletion:
+```python
+delete_documents(namespace_name, ids)
+delete_vectors(namespace_name, ids)
+```
+### Analysis (Planned):
+```python
+get_eigenvectors(namespace_name, n_eigenvectors=1) - Not yet implemented
+get_graph(namespace_name) - Not yet implemented
+get_umap_image(namespace_name, n_dimensions=2) - Not yet implemented
+```
+(Refer to method docstrings or full documentation for detailed parameters and return types.)
 
-            try:
-                print(f"\nCreating vector namespace: {vector_ns_name}")
-                client.create_namespace(
-                    namespace_name=vector_ns_name,
-                    type="vector",
-                    vector_dimension=vector_dim
-                )
-                print(f"Namespace '{vector_ns_name}' created.")
-            except ConflictError:
-                print(f"Namespace '{vector_ns_name}' already exists.")
+## Documentation
+Full API reference and further examples can be found at: [https://moorcheh.ai/docs/](https://moorcheh.ai/docs/)]
 
-            # --- 2. List Namespaces ---
-            print("\nListing namespaces...")
-            namespaces_response = client.list_namespaces()
-            print("Current Namespaces:")
-            print(json.dumps(namespaces_response.get('namespaces', []), indent=2))
+## Contributing
+Contributions are welcome! Please refer to the contributing guidelines (CONTRIBUTING.md - TBD) for details on setting up the development environment, running tests, and submitting pull requests.
 
-            # --- 3. Upload Documents (to text namespace) ---
-            print(f"\nUploading documents to '{text_ns_name}'...")
-            docs_to_upload = [
-                {"id": "qs-doc-1", "text": "Moorcheh uses information theory for search.", "source": "quickstart"},
-                {"id": "qs-doc-2", "text": "The Python SDK makes API calls easy.", "source": "quickstart"},
-                {"id": "qs-doc-3", "text": "Text data is embedded automatically.", "source": "quickstart"},
-            ]
-            upload_doc_res = client.upload_documents(namespace_name=text_ns_name, documents=docs_to_upload)
-            print("Upload documents response:", upload_doc_res)
-
-            # --- 4. Upload Vectors (to vector namespace) ---
-            print(f"\nUploading vectors to '{vector_ns_name}'...")
-            vectors_to_upload = []
-            for i in range(5): # Upload 5 random vectors
-                vec_id = f"qs-vec-{i+1}"
-                # Generate random vector of correct dimension
-                random_vector = [random.uniform(0.0, 1.0) for _ in range(vector_dim)]
-                vectors_to_upload.append({
-                    "id": vec_id,
-                    "vector": random_vector,
-                    "metadata": {"source": "quickstart_random", "index": i}
-                })
-            upload_vec_res = client.upload_vectors(namespace_name=vector_ns_name, vectors=vectors_to_upload)
-            print("Upload vectors response:", upload_vec_res)
-
-            # Allow time for async text processing (adjust if needed)
-            print("\nWaiting briefly for text processing...")
-            import time
-            time.sleep(10) # Give the worker lambda some time
-
-            # --- 5. Search Text Namespace ---
-            print(f"\nSearching text namespace '{text_ns_name}'...")
-            text_search_res = client.search(
-                namespaces=[text_ns_name],
-                query="API calls",
-                top_k=2
-            )
-            print("Text search results:")
-            print(json.dumps(text_search_res, indent=2))
-
-            # --- 6. Search Vector Namespace ---
-            print(f"\nSearching vector namespace '{vector_ns_name}'...")
-            # Use one of the vectors we uploaded (or generate a new random one) as query
-            query_vector = [random.uniform(0.0, 1.0) for _ in range(vector_dim)]
-            vector_search_res = client.search(
-                namespaces=[vector_ns_name],
-                query=query_vector,
-                top_k=2
-            )
-            print("Vector search results:")
-            print(json.dumps(vector_search_res, indent=2))
-
-            # --- 7. Delete Items ---
-            print(f"\nDeleting document 'qs-doc-1' from '{text_ns_name}'...")
-            del_doc_res = client.delete_documents(namespace_name=text_ns_name, ids=["qs-doc-1"])
-            print("Delete document response:", del_doc_res)
-
-            print(f"\nDeleting vector 'qs-vec-1' from '{vector_ns_name}'...")
-            del_vec_res = client.delete_vectors(namespace_name=vector_ns_name, ids=["qs-vec-1"])
-            print("Delete vector response:", del_vec_res)
-
-            # --- 8. Cleanup: Delete Namespaces ---
-            # print(f"\nDeleting namespace: {text_ns_name}")
-            # client.delete_namespace(text_ns_name)
-            # print(f"\nDeleting namespace: {vector_ns_name}")
-            # client.delete_namespace(vector_ns_name)
-            # print("\nCleanup complete.")
-
-
-    except (AuthenticationError, InvalidInputError, NamespaceNotFound, ConflictError, APIError, MoorchehError) as e:
-        print(f"\nAn error occurred during the quick start:")
-        print(f"Error Type: {type(e).__name__}")
-        print(f"Details: {e}")
-    except Exception as e:
-        print(f"\nAn unexpected error occurred: {e}")
-
-if __name__ == "__main__":
-    run_quickstart()
-API Client MethodsThe MoorchehClient provides the following methods corresponding to the API v1 endpoints:Namespace Management:create_namespace(namespace_name, type, vector_dimension=None)list_namespaces()delete_namespace(namespace_name)Data Ingestion:upload_documents(namespace_name, documents) - For text namespaces (async processing).upload_vectors(namespace_name, vectors) - For vector namespaces (sync processing).Search:search(namespaces, query, top_k=10, threshold=None, kiosk_mode=False) - Handles text or vector queries based on input type.Data Deletion:delete_documents(namespace_name, ids)delete_vectors(namespace_name, ids)Analysis (Planned):get_eigenvectors(namespace_name, n_eigenvectors=1) - Not yet implementedget_graph(namespace_name) - Not yet implementedget_umap_image(namespace_name, n_dimensions=2) - Not yet implemented(Refer to method docstrings or full documentation for detailed parameters and return types.)DocumentationFull API reference and further examples can be found at: (Link to documentation site - TBD)ContributingContributions are welcome! Please refer to the contributing guidelines (CONTRIBUTING.md -
+## License
+This project is licensed under the MIT License -
