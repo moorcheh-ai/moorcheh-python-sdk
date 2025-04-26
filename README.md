@@ -37,7 +37,9 @@ poetry install
 
 ## Authentication
 The SDK requires a Moorcheh API key for authentication. Obtain an API Key: Sign up and generate an API key through the Moorcheh.ai [https://moorcheh.ai] platform dashboard. 
-Provide the Key: The recommended way is to set the MOORCHEH_API_KEY environment variable:
+### Provide the Key: 
+The recommended way is to set the MOORCHEH_API_KEY environment variable:
+
 Linux/macOS/Git Bash:
 ```bash
 export MOORCHEH_API_KEY="YOUR_API_KEY_HERE"
