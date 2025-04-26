@@ -96,18 +96,24 @@ search(namespaces, query, top_k=10, threshold=None, kiosk_mode=False) - Handles 
 ### Data Deletion:
 ```python
 delete_documents(namespace_name, ids)
+```
+```python
 delete_vectors(namespace_name, ids)
 ```
 ### Analysis (Planned):
 ```python
 get_eigenvectors(namespace_name, n_eigenvectors=1) - Not yet implemented
+```
+```python
 get_graph(namespace_name) - Not yet implemented
+```
+```python
 get_umap_image(namespace_name, n_dimensions=2) - Not yet implemented
 ```
 (Refer to method docstrings or full documentation for detailed parameters and return types.)
 
 ## Documentation
-Full API reference and further examples can be found at: [https://moorcheh.ai/docs/](https://moorcheh.ai/docs/)]
+Full API reference and further examples can be found at: [https://www.moorcheh.ai/docs](https://www.moorcheh.ai/docs)
 
 ## Contributing
 Contributions are welcome! Please refer to the contributing guidelines (CONTRIBUTING.md - TBD) for details on setting up the development environment, running tests, and submitting pull requests.
