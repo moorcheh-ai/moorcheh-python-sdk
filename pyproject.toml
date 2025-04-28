@@ -2,25 +2,27 @@
 name = "moorcheh-sdk"
 version = "0.1.0"
 description = "Python SDK for the Moorcheh Semantic Search API"
-authors = ["Majid Fekri"] 
+authors = ["Majid Fekri majid.fekri@edgeaiinnovations.com"]
 readme = "README.md"
-license = "MIT" 
-repository = "https://github.com/mjfekri/moorcheh-python-sdk" # Replace with your repo URL
-homepage = "https://moorcheh.ai" # Optional project homepage
+license = "MIT" # Or your chosen license
+repository = "https://github.com/mjfekri/moorcheh-python-sdk" 
+homepage = "https://www.moorcheh.ai" 
 keywords = ["moorcheh", "semantic search", "vector search", "ai", "sdk"]
 
 [tool.poetry.dependencies]
-# --- UPDATED PYTHON VERSION ---
-python = "^3.9" # Minimum supported Python version is now 3.9
-# -----------------------------
+# --- UPDATE THIS LINE ---
+python = "^3.10" # Require Python 3.10 or newer
+# ------------------------
 httpx = "^0.27.0" # HTTP client (supports sync/async)
 # Add other core dependencies here if needed later
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.0"         # Testing framework
-pytest-httpx = "^0.30.0"  # Mocking HTTP requests for tests (Now compatible)
+pytest-httpx = "^0.30.0"  # Mocking HTTP requests for tests
 mypy = "^1.10.0"          # Static type checker
+# numpy will be added here by the next command
 # Add other dev dependencies like linters (ruff, black), coverage tools later
+numpy = "^2.2.5"
 
 [build-system]
 requires = ["poetry-core"]
@@ -28,9 +30,9 @@ build-backend = "poetry.core.masonry.api"
 
 # Optional: Configure MyPy
 [tool.mypy]
-# --- UPDATED MyPy PYTHON VERSION ---
-python_version = "3.9"
-# ---------------------------------
+# --- UPDATE THIS LINE ---
+python_version = "3.10" #  project's minimum Python version
+# ------------------------
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true # Can be helpful initially
