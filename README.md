@@ -24,7 +24,7 @@ pip install moorcheh-sdk
 
 Alternatively, install directly from the GitHub repository:
 ```bash
-pip install git [https://github.com/mjfekri/moorcheh-python-sdk.git]
+pip install git+[https://github.com/mjfekri/moorcheh-python-sdk.git]
 ```
 ## Usage
 It's recommended to use a virtual environment. If you clone the repository, you can use Poetry for easy setup and dependency management:
