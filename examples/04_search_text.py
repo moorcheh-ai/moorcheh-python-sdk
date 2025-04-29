@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import logging # Import logging module
 from moorcheh_sdk import (
     MoorchehClient,
     MoorchehError,
@@ -12,22 +13,34 @@ from moorcheh_sdk import (
     APIError,
 )
 
+# --- Configure Logging ---
+# Set up basic configuration for logging
+logging.basicConfig(
+    level=logging.INFO, # Set the minimum level to capture (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+# Get a logger for this specific script
+logger = logging.getLogger(__name__)
+# -------------------------
+
 def main():
     """
-    Example script to perform a text search in a namespace using the SDK.
+    Example script to perform a text search in a namespace using the SDK, with logging.
     """
-    print("--- Moorcheh SDK: Text Search Example ---")
+    logger.info("--- Moorcheh SDK: Text Search Example ---")
 
     # 1. Initialize the Client
     try:
+        # Client initialization will log its base URL (at INFO level)
         client = MoorchehClient()
-        print("Client initialized successfully.")
+        logger.info("Client initialized successfully.")
     except AuthenticationError as e:
-        print(f"Authentication Error: {e}")
-        print("Please ensure the MOORCHEH_API_KEY environment variable is set correctly.")
+        logger.error(f"Authentication Error: {e}")
+        logger.error("Please ensure the MOORCHEH_API_KEY environment variable is set correctly.")
         sys.exit(1)
     except MoorchehError as e:
-        print(f"Error initializing client: {e}")
+        logger.error(f"Error initializing client: {e}", exc_info=True) # Log full traceback
         sys.exit(1)
 
     # 2. Define Search Parameters
@@ -38,16 +51,17 @@ def main():
     score_threshold = 0.001 # Optional minimum score (0-1)
     # ----------------------------------------------------
 
-    print(f"\nAttempting to search namespace(s): '{target_namespace}'")
-    print(f"  Query: '{search_query}'")
-    print(f"  Top K: {top_k_results}")
+    logger.info(f"Attempting to search namespace(s): '{target_namespace}'")
+    logger.info(f"  Query: '{search_query}'")
+    logger.info(f"  Top K: {top_k_results}")
     if score_threshold is not None:
-        print(f"  Threshold: {score_threshold}")
+        logger.info(f"  Threshold: {score_threshold}")
 
     # 3. Call the search method
     try:
         # Use the client's context manager
         with client:
+            # SDK method call will produce its own logs
             response = client.search(
                 namespaces=[target_namespace], # Pass namespace(s) as a list
                 query=search_query,           # Pass the text query string
@@ -55,33 +69,37 @@ def main():
                 threshold=score_threshold,
                 # kiosk_mode=False # Default is false
             )
-            print("\n--- API Response (Search Results) ---")
-            print(json.dumps(response, indent=2))
-            print("-------------------------------------\n")
+            logger.info("--- API Response (Search Results) ---")
+            # Use json.dumps for pretty printing the response dict in the log
+            logger.info(json.dumps(response, indent=2))
+            logger.info("-------------------------------------")
 
             if response and 'results' in response:
-                 print(f"Search completed successfully. Found {len(response['results'])} result(s). ✅")
+                 result_count = len(response['results'])
+                 logger.info(f"Search completed successfully. Found {result_count} result(s). ✅")
             else:
-                 print("Search completed, but response format might be unexpected.")
+                 logger.warning("Search completed, but response format might be unexpected or missing 'results'.")
 
-    # 4. Handle Specific Errors
+    # 4. Handle Specific Errors using logger.error or logger.exception
     except NamespaceNotFound as e:
-         print(f"\nError: Namespace '{target_namespace}' not found or not accessible.")
-         print(f"API Message: {e}")
+         # Log specific error for namespace not found
+         logger.error(f"Namespace '{target_namespace}' not found or not accessible.")
+         logger.error(f"API Message: {e}")
     except InvalidInputError as e:
-        print(f"\nError: Invalid input provided for search.")
-        print(f"API Message: {e}")
+        logger.error("Invalid input provided for search.")
+        logger.error(f"API Message: {e}")
     except AuthenticationError as e:
-        print(f"\nError: Authentication failed.")
-        print(f"API Message: {e}")
+        logger.error("Authentication failed during search.")
+        logger.error(f"API Message: {e}")
     except APIError as e:
-        print(f"\nError: An API error occurred during search.")
-        print(f"API Message: {e}")
+        # Log the full traceback for unexpected API errors
+        logger.exception("An API error occurred during search.")
     except MoorchehError as e: # Catch base SDK or network errors
-        print(f"\nError: An SDK or network error occurred.")
-        print(f"Details: {e}")
+        # Log the full traceback for SDK/network errors
+        logger.exception("An SDK or network error occurred.")
     except Exception as e: # Catch any other unexpected errors
-        print(f"\nAn unexpected error occurred: {e}")
+        # Log the full traceback for any other errors
+        logger.exception("An unexpected error occurred.")
 
 if __name__ == "__main__":
     main()

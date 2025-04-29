@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import logging # Import logging module
 from moorcheh_sdk import (
     MoorchehClient,
     MoorchehError,
@@ -10,59 +11,74 @@ from moorcheh_sdk import (
     APIError,
 )
 
+# --- Configure Logging ---
+# Set up basic configuration for logging
+logging.basicConfig(
+    level=logging.INFO, # Set the minimum level to capture (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+# Get a logger for this specific script
+logger = logging.getLogger(__name__)
+# -------------------------
+
 def main():
     """
-    Example script to list Moorcheh namespaces using the SDK.
+    Example script to list Moorcheh namespaces using the SDK, with logging.
     """
-    print("--- Moorcheh SDK: List Namespaces Example ---")
+    logger.info("--- Moorcheh SDK: List Namespaces Example ---")
 
     # 1. Initialize the Client
     # Reads the API key from the MOORCHEH_API_KEY environment variable
     try:
+        # Client initialization will log its base URL (at INFO level)
         client = MoorchehClient()
-        print("Client initialized successfully.")
+        logger.info("Client initialized successfully.")
     except AuthenticationError as e:
-        print(f"Authentication Error: {e}")
-        print("Please ensure the MOORCHEH_API_KEY environment variable is set correctly.")
+        logger.error(f"Authentication Error: {e}")
+        logger.error("Please ensure the MOORCHEH_API_KEY environment variable is set correctly.")
         sys.exit(1)
     except MoorchehError as e:
-        print(f"Error initializing client: {e}")
+        logger.error(f"Error initializing client: {e}", exc_info=True) # Log full traceback
         sys.exit(1)
 
     # 2. Call the list_namespaces method
-    print("\nAttempting to list namespaces...")
+    logger.info("Attempting to list namespaces...")
     try:
         # Use the client's context manager for automatic cleanup
         with client:
+            # SDK method call will produce its own logs
             response = client.list_namespaces() # Call the SDK method
 
-            print("\n--- API Response ---")
-            print(json.dumps(response, indent=2))
-            print("--------------------\n")
+            logger.info("--- API Response ---")
+            # Use json.dumps for pretty printing the response dict in the log
+            logger.info(json.dumps(response, indent=2))
+            logger.info("--------------------")
 
-            # Optional: Print a summary
+            # Optional: Log a summary
             if response and 'namespaces' in response:
                  num_namespaces = len(response['namespaces'])
-                 print(f"Successfully retrieved {num_namespaces} namespace(s). ✅")
-                 # Optionally iterate and print names
+                 logger.info(f"Successfully retrieved {num_namespaces} namespace(s). ✅")
+                 # Optionally iterate and log names at DEBUG level if needed
                  # for ns in response['namespaces']:
-                 #     print(f" - {ns.get('namespace_name')} (Type: {ns.get('type')}, Items: {ns.get('itemCount')})")
+                 #     logger.debug(f" - {ns.get('namespace_name')} (Type: {ns.get('type')}, Items: {ns.get('itemCount')})")
             else:
-                 print("Received response, but 'namespaces' key was missing or empty.")
+                 # Log a warning if the expected key is missing
+                 logger.warning("Received response, but 'namespaces' key was missing or empty.")
 
-
-    # 3. Handle Specific Errors
+    # 3. Handle Specific Errors using logger.error or logger.exception
     except AuthenticationError as e: # Should be caught by init, but good practice
-        print(f"\nError: Authentication failed.")
-        print(f"API Message: {e}")
+        logger.error("Authentication failed during list namespaces.")
+        logger.error(f"API Message: {e}")
     except APIError as e:
-        print(f"\nError: An API error occurred.")
-        print(f"API Message: {e}")
+        # Log the full traceback for unexpected API errors
+        logger.exception("An API error occurred during list namespaces.")
     except MoorchehError as e: # Catch base SDK or network errors
-        print(f"\nError: An SDK or network error occurred.")
-        print(f"Details: {e}")
+        # Log the full traceback for SDK/network errors
+        logger.exception("An SDK or network error occurred.")
     except Exception as e: # Catch any other unexpected errors
-        print(f"\nAn unexpected error occurred: {e}")
+        # Log the full traceback for any other errors
+        logger.exception("An unexpected error occurred.")
 
 if __name__ == "__main__":
     main()

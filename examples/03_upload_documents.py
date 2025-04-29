@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import logging # Import logging module
 from moorcheh_sdk import (
     MoorchehClient,
     MoorchehError,
@@ -12,22 +13,34 @@ from moorcheh_sdk import (
     APIError,
 )
 
+# --- Configure Logging ---
+# Set up basic configuration for logging
+logging.basicConfig(
+    level=logging.INFO, # Set the minimum level to capture (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+# Get a logger for this specific script
+logger = logging.getLogger(__name__)
+# -------------------------
+
 def main():
     """
-    Example script to upload documents to a text namespace using the SDK.
+    Example script to upload documents to a text namespace using the SDK, with logging.
     """
-    print("--- Moorcheh SDK: Upload Documents Example ---")
+    logger.info("--- Moorcheh SDK: Upload Documents Example ---")
 
     # 1. Initialize the Client
     try:
+        # Client initialization will log its base URL (at INFO level)
         client = MoorchehClient()
-        print("Client initialized successfully.")
+        logger.info("Client initialized successfully.")
     except AuthenticationError as e:
-        print(f"Authentication Error: {e}")
-        print("Please ensure the MOORCHEH_API_KEY environment variable is set correctly.")
+        logger.error(f"Authentication Error: {e}")
+        logger.error("Please ensure the MOORCHEH_API_KEY environment variable is set correctly.")
         sys.exit(1)
     except MoorchehError as e:
-        print(f"Error initializing client: {e}")
+        logger.error(f"Error initializing client: {e}", exc_info=True) # Log full traceback
         sys.exit(1)
 
     # 2. Define Target Namespace and Documents to Upload
@@ -54,43 +67,47 @@ def main():
         }
     ]
 
-    print(f"\nAttempting to upload {len(documents_to_upload)} documents to namespace: '{target_namespace}'")
+    logger.info(f"Attempting to upload {len(documents_to_upload)} documents to namespace: '{target_namespace}'")
 
     # 3. Call the upload_documents method
     try:
         # Use the client's context manager
         with client:
+            # SDK method call will produce its own logs
             response = client.upload_documents(
                 namespace_name=target_namespace,
                 documents=documents_to_upload
             )
-            print("\n--- API Response (Should be 202 Accepted) ---")
-            print(json.dumps(response, indent=2))
-            print("--------------------------------------------\n")
+            logger.info("--- API Response (Should be 202 Accepted) ---")
+            # Use json.dumps for pretty printing the response dict in the log
+            logger.info(json.dumps(response, indent=2))
+            logger.info("--------------------------------------------")
             if response.get('status') == 'queued':
-                print(f"Successfully queued {len(response.get('submitted_ids', []))} documents for processing! ✅")
+                submitted_count = len(response.get('submitted_ids', []))
+                logger.info(f"Successfully queued {submitted_count} documents for processing! ✅")
             else:
-                print("Upload request sent, but status was not 'queued'. Check response details.")
+                logger.warning(f"Upload request sent, but status was not 'queued'. Status: {response.get('status')}. Check response details.")
 
 
-    # 4. Handle Specific Errors
+    # 4. Handle Specific Errors using logger.error or logger.exception
     except NamespaceNotFound as e:
-         print(f"\nError: Namespace '{target_namespace}' not found.")
-         print(f"API Message: {e}")
+         logger.error(f"Namespace '{target_namespace}' not found.")
+         logger.error(f"API Message: {e}")
     except InvalidInputError as e:
-        print(f"\nError: Invalid input provided for document upload.")
-        print(f"API Message: {e}")
+        logger.error("Invalid input provided for document upload.")
+        logger.error(f"API Message: {e}")
     except AuthenticationError as e:
-        print(f"\nError: Authentication failed.")
-        print(f"API Message: {e}")
+        logger.error("Authentication failed during document upload.")
+        logger.error(f"API Message: {e}")
     except APIError as e:
-        print(f"\nError: An API error occurred during upload.")
-        print(f"API Message: {e}")
+        # Log the full traceback for unexpected API errors
+        logger.exception("An API error occurred during document upload.")
     except MoorchehError as e: # Catch base SDK or network errors
-        print(f"\nError: An SDK or network error occurred.")
-        print(f"Details: {e}")
+        # Log the full traceback for SDK/network errors
+        logger.exception("An SDK or network error occurred.")
     except Exception as e: # Catch any other unexpected errors
-        print(f"\nAn unexpected error occurred: {e}")
+        # Log the full traceback for any other errors
+        logger.exception("An unexpected error occurred.")
 
 if __name__ == "__main__":
     main()

@@ -18,11 +18,10 @@ httpx = "^0.27.0" # HTTP client (supports sync/async)
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.0"         # Testing framework
-pytest-httpx = "^0.30.0"  # Mocking HTTP requests for tests
-mypy = "^1.10.0"          # Static type checker
-# numpy will be added here by the next command
-# Add other dev dependencies like linters (ruff, black), coverage tools later
-numpy = "^2.2.5"
+pytest-mock = "^3.12.0"  # For mocking objects in tests (replaces pytest-httpx based on current tests)
+numpy = "^1.26.4"       # For benchmark script (adjust version as needed, ^1.26 or ^2.0)
+mypy = "^1.10.0"        # Static type checker
+
 
 [build-system]
 requires = ["poetry-core"]
