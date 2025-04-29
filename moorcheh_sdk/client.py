@@ -28,6 +28,29 @@ DEFAULT_BASE_URL = "https://kj88v2w4p9.execute-api.us-east-2.amazonaws.com/v1" #
 class MoorchehClient:
     """
     Python client for interacting with the Moorcheh Semantic Search API v1.
+
+    Provides methods for managing namespaces, ingesting data (text or vectors),
+    performing semantic searches, and deleting data.
+
+    Example:
+        >>> import os
+        >>> from moorcheh_sdk import MoorchehClient, MoorchehError
+        >>>
+        >>> try:
+        ...     # Assumes MOORCHEH_API_KEY is set in environment
+        ...     client = MoorchehClient()
+        ...     namespaces = client.list_namespaces()
+        ...     print(namespaces)
+        ... except MoorchehError as e:
+        ...     print(f"An error occurred: {e}")
+        ... finally:
+        ...     if 'client' in locals():
+        ...         client.close() # Explicitly close if not using context manager
+
+    Attributes:
+        api_key (str): The API key used for authentication.
+        base_url (str): The base URL of the Moorcheh API being targeted.
+        timeout (float): The request timeout in seconds.
     """
     def __init__(
         self,
@@ -38,16 +61,23 @@ class MoorchehClient:
         """
         Initializes the MoorchehClient.
 
+        Reads configuration from parameters or environment variables.
+        The order of precedence for configuration is:
+        1. Direct parameter (`api_key`, `base_url`).
+        2. Environment variable (`MOORCHEH_API_KEY`, `MOORCHEH_BASE_URL`).
+        3. Default value (for `base_url` and `timeout`).
+
         Args:
-            api_key: Your Moorcheh API key. If None, reads from MOORCHEH_API_KEY env var.
+            api_key: Your Moorcheh API key. If None, reads from the
+                `MOORCHEH_API_KEY` environment variable.
             base_url: The base URL for the Moorcheh API. If None, reads from
-                      MOORCHEH_BASE_URL env var or uses the default production URL.
-            timeout: Request timeout in seconds (default: 30.0).
-        
-        * API key is required for authentication. get you API key from https://moorcheh.ai
+                the `MOORCHEH_BASE_URL` environment variable, otherwise uses
+                the default production URL.
+            timeout: Request timeout in seconds for HTTP requests. Defaults to 30.0.
 
         Raises:
-            AuthenticationError: If the API key is not provided or found.
+            AuthenticationError: If the API key is not provided either as a
+                parameter or via the `MOORCHEH_API_KEY` environment variable.
         """
         self.api_key = api_key or os.environ.get("MOORCHEH_API_KEY")
         if not self.api_key:
@@ -87,7 +117,32 @@ class MoorchehClient:
         expected_status: int = 200,
         alt_success_status: Optional[int] = None,
     ) -> Dict[str, Any] | bytes | None:
-        """Internal helper to make HTTP requests."""
+        """
+        Internal helper method to make HTTP requests to the Moorcheh API.
+
+        Handles request construction, sending, response validation, error mapping,
+        and basic logging. Not intended for direct use by SDK consumers.
+
+        Args:
+            method: HTTP method (e.g., "GET", "POST", "DELETE").
+            endpoint: API endpoint path (e.g., "/namespaces").
+            json_data: Dictionary to be sent as JSON payload in the request body.
+            params: Dictionary of URL query parameters.
+            expected_status: The primary expected HTTP status code for success (e.g., 200, 201).
+            alt_success_status: An alternative acceptable HTTP status code for success (e.g., 207).
+
+        Returns:
+            Decoded JSON response as a dictionary, raw bytes for binary content (e.g., images),
+            or None for responses with no content (e.g., 204).
+
+        Raises:
+            InvalidInputError: For 400 Bad Request errors from the API.
+            AuthenticationError: For 401 Unauthorized or 403 Forbidden errors.
+            NamespaceNotFound: For 404 Not Found errors specifically related to namespaces.
+            ConflictError: For 409 Conflict errors from the API.
+            APIError: For other 4xx/5xx HTTP errors or issues decoding a successful response.
+            MoorchehError: For client-side errors like network issues or timeouts.
+        """
         if not endpoint.startswith('/'): endpoint = '/' + endpoint
         url = f"{self.base_url}{endpoint}" # Full URL for logging clarity
         # Log the request attempt at DEBUG level
@@ -179,7 +234,44 @@ class MoorchehClient:
         type: str,
         vector_dimension: Optional[int] = None
     ) -> Dict[str, Any]:
-        """Creates a new namespace."""
+        """
+        Creates a new namespace for storing data.
+
+        Namespaces isolate data and configurations. Choose 'text' for storing raw text
+        that Moorcheh will embed, or 'vector' for storing pre-computed vectors.
+
+        Args:
+            namespace_name: A unique name for the namespace (string). Must adhere
+                to naming conventions (e.g., alphanumeric, hyphens).
+            type: The type of namespace, either "text" or "vector".
+            vector_dimension: The dimension of vectors that will be stored.
+                Required only if `type` is "vector". Must be a positive integer.
+
+        Returns:
+            A dictionary containing the API response upon successful creation,
+            typically confirming the namespace details.
+            Example: `{'message': 'Namespace created successfully', 'namespace_name': 'my-text-ns', 'type': 'text'}`
+
+        Raises:
+            InvalidInputError: If `namespace_name` is invalid, `type` is not
+                'text' or 'vector', `vector_dimension` is missing or invalid
+                for type 'vector', or `vector_dimension` is provided for type 'text'.
+                Also raised for API 400 errors.
+            ConflictError: If a namespace with the given `namespace_name` already
+                exists (API 409 error).
+            AuthenticationError: If the API key is invalid or lacks permissions.
+            APIError: For other unexpected API errors during creation.
+            MoorchehError: For network issues or client-side request problems.
+
+        Example:
+            >>> # Create a text namespace
+            >>> text_ns_info = client.create_namespace("my-documents", "text")
+            >>> print(text_ns_info)
+            >>>
+            >>> # Create a vector namespace
+            >>> vector_ns_info = client.create_namespace("my-image-vectors", "vector", 512)
+            >>> print(vector_ns_info)
+        """
         logger.info(f"Attempting to create namespace '{namespace_name}' of type '{type}'...")
         # Client-side validation
         if not namespace_name or not isinstance(namespace_name, str):
@@ -211,7 +303,29 @@ class MoorchehClient:
 
 
     def delete_namespace(self, namespace_name: str) -> None:
-        """Deletes a namespace and all its associated data."""
+        """
+        Deletes a namespace and all its associated data permanently.
+
+        Warning: This operation is irreversible.
+
+        Args:
+            namespace_name: The exact name of the namespace to delete.
+
+        Returns:
+            None. A successful deletion is indicated by the absence of an exception.
+
+        Raises:
+            InvalidInputError: If `namespace_name` is empty or not a string.
+            NamespaceNotFound: If no namespace with the given `namespace_name` exists
+                (API 404 error).
+            AuthenticationError: If the API key is invalid or lacks permissions.
+            APIError: For other unexpected API errors during deletion.
+            MoorchehError: For network issues or client-side request problems.
+
+        Example:
+            >>> client.delete_namespace("my-temporary-ns")
+            >>> print("Namespace deleted.") # If no exception was raised
+        """
         logger.info(f"Attempting to delete namespace '{namespace_name}'...")
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
@@ -224,7 +338,47 @@ class MoorchehClient:
 
 
     def list_namespaces(self) -> Dict[str, Any]:
-        """Retrieves a list of namespaces belonging to the authenticated user."""
+        """
+        Retrieves a list of all namespaces accessible by the current API key.
+
+        Returns information about each namespace, including its name, type,
+        item count, and vector dimension (if applicable).
+
+        Returns:
+            A dictionary containing the API response. The list of namespaces is
+            under the 'namespaces' key. Includes 'execution_time'.
+            Example:
+            ```json
+            {
+              "namespaces": [
+                {
+                  "namespace_name": "my-docs",
+                  "type": "text",
+                  "itemCount": 1250,
+                  "vector_dimension": null
+                },
+                {
+                  "namespace_name": "image-vectors",
+                  "type": "vector",
+                  "itemCount": 5000,
+                  "vector_dimension": 512
+                }
+              ],
+              "execution_time": 0.045
+            }
+            ```
+
+        Raises:
+            AuthenticationError: If the API key is invalid or lacks permissions.
+            APIError: If the API returns an error or an unexpected response format
+                      (e.g., missing 'namespaces' key).
+            MoorchehError: For network issues or client-side request problems.
+
+        Example:
+            >>> ns_list_response = client.list_namespaces()
+            >>> for ns in ns_list_response.get('namespaces', []):
+            ...     print(f" - Name: {ns['namespace_name']}, Type: {ns['type']}")
+        """
         logger.info("Attempting to list namespaces...")
         response_data = self._request("GET", "/namespaces", expected_status=200)
 
@@ -245,7 +399,43 @@ class MoorchehClient:
         namespace_name: str,
         documents: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """Uploads text documents to a text-based namespace."""
+        """
+        Uploads text documents to a specified text-based namespace.
+
+        Moorcheh processes these documents asynchronously, embedding the text content
+        for semantic search. Each dictionary in the `documents` list represents a
+        single text chunk or document.
+
+        Args:
+            namespace_name: The name of the target *text-based* namespace.
+            documents: A list of dictionaries. Each dictionary **must** contain:
+                - `id` (Union[str, int]): A unique identifier for this document chunk.
+                - `text` (str): The text content to be embedded and indexed.
+                Any other keys in the dictionary are stored as metadata associated
+                with the document chunk.
+
+        Returns:
+            A dictionary confirming the documents were successfully queued for processing.
+            Example: `{'status': 'queued', 'submitted_ids': ['doc1', 'doc2']}`
+
+        Raises:
+            InvalidInputError: If `namespace_name` is invalid, `documents` is not a
+                non-empty list of dictionaries, or if any dictionary within `documents`
+                lacks a valid `id` or `text`. Also raised for API 400 errors.
+            NamespaceNotFound: If the specified `namespace_name` does not exist or
+                is not a text-based namespace (API 404 error).
+            AuthenticationError: If the API key is invalid or lacks permissions.
+            APIError: For other unexpected API errors during the upload request.
+            MoorchehError: For network issues or client-side request problems.
+
+        Example:
+            >>> docs_to_add = [
+            ...     {"id": "report-01-p1", "text": "The first paragraph...", "source": "report.pdf"},
+            ...     {"id": "report-01-p2", "text": "The second paragraph...", "source": "report.pdf"},
+            ... ]
+            >>> upload_status = client.upload_documents("my-reports", docs_to_add)
+            >>> print(upload_status)
+        """
         logger.info(f"Attempting to upload {len(documents)} documents to namespace '{namespace_name}'...")
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
@@ -280,7 +470,49 @@ class MoorchehClient:
         namespace_name: str,
         vectors: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """Uploads pre-computed vectors to a vector-based namespace."""
+        """
+        Uploads pre-computed vectors to a specified vector-based namespace.
+
+        Use this method when you have already generated vector embeddings outside
+        of Moorcheh. The upload process is synchronous.
+
+        Args:
+            namespace_name: The name of the target *vector-based* namespace.
+            vectors: A list of dictionaries. Each dictionary **must** contain:
+                - `id` (Union[str, int]): A unique identifier for this vector.
+                - `vector` (List[float]): The vector embedding as a list of floats.
+                  The dimension must match the `vector_dimension` of the namespace.
+                An optional `metadata` (dict) key can be included to store
+                additional information associated with the vector.
+
+        Returns:
+            A dictionary confirming the result of the upload operation.
+            If all vectors are processed successfully (API status 201), the 'status'
+            will be 'success'. If some vectors fail (e.g., dimension mismatch)
+            (API status 207), the 'status' will be 'partial', and the 'errors'
+            list will contain details about the failed items.
+            Example (Success): `{'status': 'success', 'vector_ids_processed': ['vec1', 'vec2'], 'errors': []}`
+            Example (Partial): `{'status': 'partial', 'vector_ids_processed': ['vec1'], 'errors': [{'id': 'vec2', 'error': 'Dimension mismatch'}]}`
+
+        Raises:
+            InvalidInputError: If `namespace_name` is invalid, `vectors` is not a
+                non-empty list of dictionaries, or if any dictionary within `vectors`
+                lacks a valid `id` or `vector`. Also raised for API 400 errors
+                (e.g., vector dimension mismatch detected server-side).
+            NamespaceNotFound: If the specified `namespace_name` does not exist or
+                is not a vector-based namespace (API 404 error).
+            AuthenticationError: If the API key is invalid or lacks permissions.
+            APIError: For other unexpected API errors during the upload request.
+            MoorchehError: For network issues or client-side request problems.
+
+        Example:
+            >>> vectors_to_add = [
+            ...     {"id": "img001", "vector": [0.1, 0.2, ..., 0.9], "metadata": {"label": "cat"}},
+            ...     {"id": "img002", "vector": [0.5, 0.6, ..., 0.3], "metadata": {"label": "dog"}},
+            ... ]
+            >>> upload_status = client.upload_vectors("my-image-vectors", vectors_to_add)
+            >>> print(upload_status)
+        """
         logger.info(f"Attempting to upload {len(vectors)} vectors to namespace '{namespace_name}'...")
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
@@ -327,7 +559,95 @@ class MoorchehClient:
         threshold: Optional[float] = None,
         kiosk_mode: bool = False
     ) -> Dict[str, Any]:
-        """Performs a semantic search across one or more specified namespaces."""
+        """
+        Performs a semantic search across one or more specified namespaces.
+
+        Searches for items (documents or vectors) that are semantically similar
+        to the provided query. The query type (text or vector) must match the
+        type of the target namespace(s).
+
+        Args:
+            namespaces: A list of one or more namespace names (strings) to search within.
+                All listed namespaces must be of the same type ('text' or 'vector')
+                and match the type of the `query`.
+            query: The search query. Either:
+                - A text string (str) for searching text namespaces.
+                - A list of floats (List[float]) representing a vector embedding
+                  for searching vector namespaces. The vector dimension must match
+                  the dimension of the target vector namespace(s).
+            top_k: The maximum number of results to return (default: 10). Must be
+                a positive integer.
+            threshold: An optional minimum similarity score (ITS score) between 0 and 1.
+                Only results with a score greater than or equal to this threshold
+                will be returned. Defaults to None (no threshold filtering).
+            kiosk_mode: An optional boolean flag (default: False). If True, applies
+                stricter filtering based on internal criteria (consult Moorcheh
+                documentation for details).
+
+        Returns:
+            A dictionary containing the search results and execution time.
+            The results are under the 'results' key, which is a list of dictionaries.
+            Each result dictionary contains 'id', 'score', and 'metadata' (and 'text'
+            for text namespace results).
+            Example (Text Search):
+            ```json
+            {
+              "results": [
+                {
+                  "id": "doc-abc",
+                  "score": 0.85,
+                  "text": "Content related to the query...",
+                  "metadata": {"source": "file.txt"}
+                }
+              ],
+              "execution_time": 0.123
+            }
+            ```
+            Example (Vector Search):
+            ```json
+            {
+              "results": [
+                {
+                  "id": "vec-xyz",
+                  "score": 0.92,
+                  "metadata": {"label": "example"}
+                }
+              ],
+              "execution_time": 0.088
+            }
+            ```
+
+        Raises:
+            InvalidInputError: If `namespaces` is invalid, `query` is empty,
+                `top_k` is not a positive integer, `threshold` is outside the
+                valid range (0-1), or `kiosk_mode` is not boolean. Also raised
+                for API 400 errors (e.g., query type mismatch, vector dimension
+                mismatch).
+            NamespaceNotFound: If any of the specified namespaces do not exist
+                (API 404 error).
+            AuthenticationError: If the API key is invalid or lacks permissions.
+            APIError: For other unexpected API errors during the search.
+            MoorchehError: For network issues or client-side request problems.
+
+        Example:
+            >>> # Text search
+            >>> text_results = client.search(
+            ...     namespaces=["my-documents"],
+            ...     query="information retrieval",
+            ...     top_k=5
+            ... )
+            >>> print(text_results)
+            >>>
+            >>> # Vector search with threshold
+            >>> query_vec = [0.1, 0.9, ..., 0.2]
+            >>> vector_results = client.search(
+            ...     namespaces=["my-image-vectors"],
+            ...     query=query_vec,
+            ...     top_k=3,
+            ...     threshold=0.7
+            ... )
+            >>> print(vector_results)
+        """
         query_type = "vector" if isinstance(query, list) else "text"
         logger.info(f"Attempting {query_type} search in namespace(s) '{', '.join(namespaces)}' with top_k={top_k}, threshold={threshold}, kiosk={kiosk_mode}...")
 
@@ -372,7 +692,36 @@ class MoorchehClient:
         namespace_name: str,
         ids: List[Union[str, int]]
     ) -> Dict[str, Any]:
-        """Deletes specific document chunks from a text-based namespace by their IDs."""
+        """
+        Deletes specific document chunks from a text-based namespace by their IDs.
+
+        Args:
+            namespace_name: The name of the target *text-based* namespace.
+            ids: A list of document chunk IDs (strings or integers) to delete.
+
+        Returns:
+            A dictionary confirming the deletion status.
+            If all IDs are deleted successfully (API status 200), the 'status'
+            will be 'success'. If some IDs are not found or fail (API status 207),
+            the 'status' will be 'partial', and the 'errors' list will contain
+            details about the failed IDs.
+            Example (Success): `{'status': 'success', 'deleted_ids': ['doc1', 123], 'errors': []}`
+            Example (Partial): `{'status': 'partial', 'deleted_ids': ['doc1'], 'errors': [{'id': 123, 'error': 'ID not found'}]}`
+
+        Raises:
+            InvalidInputError: If `namespace_name` is invalid or `ids` is not a
+                non-empty list of valid IDs. Also raised for API 400 errors.
+            NamespaceNotFound: If the specified `namespace_name` does not exist or
+                is not a text-based namespace (API 404 error).
+            AuthenticationError: If the API key is invalid or lacks permissions.
+            APIError: For other unexpected API errors during the deletion request.
+            MoorchehError: For network issues or client-side request problems.
+
+        Example:
+            >>> ids_to_remove = ["old-doc-1", "temp-doc-5"]
+            >>> delete_status = client.delete_documents("my-reports", ids_to_remove)
+            >>> print(delete_status)
+        """
         logger.info(f"Attempting to delete {len(ids)} document(s) from namespace '{namespace_name}' with IDs: {ids}")
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
@@ -409,7 +758,36 @@ class MoorchehClient:
         namespace_name: str,
         ids: List[Union[str, int]]
     ) -> Dict[str, Any]:
-        """Deletes specific vectors from a vector-based namespace by their IDs."""
+        """
+        Deletes specific vectors from a vector-based namespace by their IDs.
+
+        Args:
+            namespace_name: The name of the target *vector-based* namespace.
+            ids: A list of vector IDs (strings or integers) to delete.
+
+        Returns:
+            A dictionary confirming the deletion status.
+            If all IDs are deleted successfully (API status 200), the 'status'
+            will be 'success'. If some IDs are not found or fail (API status 207),
+            the 'status' will be 'partial', and the 'errors' list will contain
+            details about the failed IDs.
+            Example (Success): `{'status': 'success', 'deleted_ids': ['vec1', 456], 'errors': []}`
+            Example (Partial): `{'status': 'partial', 'deleted_ids': ['vec1'], 'errors': [{'id': 456, 'error': 'ID not found'}]}`
+
+        Raises:
+            InvalidInputError: If `namespace_name` is invalid or `ids` is not a
+                non-empty list of valid IDs. Also raised for API 400 errors.
+            NamespaceNotFound: If the specified `namespace_name` does not exist or
+                is not a vector-based namespace (API 404 error).
+            AuthenticationError: If the API key is invalid or lacks permissions.
+            APIError: For other unexpected API errors during the deletion request.
+            MoorchehError: For network issues or client-side request problems.
+
+        Example:
+            >>> vector_ids_to_remove = ["img005", "img102"]
+            >>> delete_status = client.delete_vectors("my-image-vectors", vector_ids_to_remove)
+            >>> print(delete_status)
+        """
         logger.info(f"Attempting to delete {len(ids)} vector(s) from namespace '{namespace_name}' with IDs: {ids}")
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
@@ -443,11 +821,17 @@ class MoorchehClient:
 
 
     # --- TODO: Add other methods (get_eigenvectors, get_graph, get_umap_image) ---
-    # Remember to add logging to these methods as well when implemented.
+    # Remember to add detailed docstrings to these methods as well when implemented.
 
 
     def close(self):
-        """Closes the underlying HTTP client."""
+        """
+        Closes the underlying HTTP client connection pool.
+
+        It's recommended to call this method when you are finished with the client
+        instance, especially in long-running applications, or use the client as a
+        context manager (`with MoorchehClient(...) as client:`).
+        """
         if hasattr(self, '_client') and self._client:
             try:
                 self._client.close()
@@ -456,8 +840,14 @@ class MoorchehClient:
                 logger.error(f"Error closing underlying HTTP client: {e}", exc_info=True)
 
     def __enter__(self):
+        """Enter the runtime context related to this object."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Exit the runtime context related to this object.
+
+        Ensures the underlying HTTP client is closed.
+        """
         self.close()
 
