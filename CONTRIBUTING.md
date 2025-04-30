@@ -2,9 +2,9 @@
 First off, thank you for considering contributing to the Moorcheh Python SDK! We welcome contributions from the community to help improve the SDK.
 This document provides guidelines for contributing to this project.
 # How Can I Contribute?
-** Reporting Bugs: If you find a bug, please open an issue on GitHub. Include a clear description, steps to reproduce the bug, the expected behavior, and the actual behavior. Include relevant details like your Python version, SDK version, and operating system.
-** Suggesting Enhancements: Have an idea for a new feature or an improvement to an existing one? Open an issue on GitHub. Clearly describe the proposed enhancement and why it would be beneficial.
-** Code Contributions: If you want to fix a bug or implement a feature, please follow the process outlined below.
+* **Reporting Bugs:**   If you find a bug, please open an issue on GitHub. Include a clear description, steps to reproduce the bug, the expected behavior, and the actual behavior. Include relevant details like your Python version, SDK version, and operating system.
+* **Suggesting Enhancements:** Have an idea for a new feature or an improvement to an existing one? Open an issue on GitHub. Clearly describe the proposed enhancement and why it would be beneficial.
+* **Code Contributions:** If you want to fix a bug or implement a feature, please follow the process outlined below.
 # Getting Started (Development Setup)
 1. Fork the Repository: Create your own fork of the moorcheh-python-sdk [https://github.com/mjfekri/moorcheh-python-sdk] repository on GitHub.
 2. Clone Your Fork: Clone your forked repository to your local machine.
@@ -23,7 +23,8 @@ git checkout -b your-branch-name
 # Making Changes
 * **Code Style:**  Please follow standard Python coding conventions (PEP 8). We recommend using tools like black for formatting and ruff or flake8 for linting (consider adding these to dev-dependencies in pyproject.toml if you haven't already).
 * **Testing:**
-1, Unit Tests: Write new tests for any new features you add.
+
+1. Unit Tests: Write new tests for any new features you add.
 2. Integration Tests: Add or update tests for any bugs you fix to prevent regressions.
 3.  Ensure all tests pass before submitting a pull request. Run tests using:
 ```bash
