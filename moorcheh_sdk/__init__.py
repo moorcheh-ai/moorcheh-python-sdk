@@ -12,7 +12,7 @@ from .exceptions import (
 )
 
 # Define package version (can be read from pyproject.toml in more advanced setups)
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 # Optionally define what 'from moorcheh_sdk import *' imports
 __all__ = [
