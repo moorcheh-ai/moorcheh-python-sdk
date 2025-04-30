@@ -201,7 +201,7 @@ get_umap_image(namespace_name, n_dimensions=2) - Not yet implemented
 Full API reference and further examples can be found at: [https://www.moorcheh.ai/docs](https://www.moorcheh.ai/docs)
 
 ## Contributing
-Contributions are welcome! Please refer to the contributing guidelines (CONTRIBUTING.md - TBD) for details on setting up the development environment, running tests, and submitting pull requests.
+Contributions are welcome! Please refer to the contributing guidelines (CONTRIBUTING.md) for details on setting up the development environment, running tests, and submitting pull requests.
 
 ## License
-This project is licensed under the MIT License -
+This project is licensed under the MIT License - See the LICENSE file for details.
