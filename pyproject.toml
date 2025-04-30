@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "moorcheh-sdk"
-version = "1.0.0"
+version = "1.0.1"
 description = "Python SDK for the Moorcheh Semantic Search API"
 authors = ["Majid Fekri majid.fekri@edgeaiinnovations.com"]
 readme = "README.md"
