@@ -1,6 +1,6 @@
 # Moorcheh Python SDK
 
-[![Moorcheh.ai](https://raw.githubusercontent.com/mjfekri/moorcheh-python-sdk/main/assets/moorcheh_logo.png)](https://www.moorcheh.ai/)
+[![Moorcheh.ai](https://raw.githubusercontent.com/mjfekri/moorcheh-python-sdk/main/assets/moorcheh-logo.png)](https://www.moorcheh.ai/)
 [![PyPI version](https://badge.fury.io/py/moorcheh-sdk.svg)](https://badge.fury.io/py/moorcheh-sdk) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/pypi/pyversions/moorcheh-sdk.svg)](https://pypi.org/project/moorcheh-sdk/)
 [![Downloads](https://static.pepy.tech/personalized-badge/moorcheh-sdk?period=total&units=international_system&left_color=grey&right_color=blue&left_text=Downloads)](https://pepy.tech/project/moorcheh-sdk)
