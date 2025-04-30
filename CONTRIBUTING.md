@@ -21,16 +21,16 @@ poetry install --with dev
 git checkout -b your-branch-name
 ```
 # Making Changes
-** Code Style: Please follow standard Python coding conventions (PEP 8). We recommend using tools like black for formatting and ruff or flake8 for linting (consider adding these to dev-dependencies in pyproject.toml if you haven't already).
-** Testing:
-*** Unit Tests: Write new tests for any new features you add.
-*** Integration Tests: Add or update tests for any bugs you fix to prevent regressions.
-*** Ensure all tests pass before submitting a pull request. Run tests using:
+* **Code Style:**  Please follow standard Python coding conventions (PEP 8). We recommend using tools like black for formatting and ruff or flake8 for linting (consider adding these to dev-dependencies in pyproject.toml if you haven't already).
+* **Testing:**
+1, Unit Tests: Write new tests for any new features you add.
+2. Integration Tests: Add or update tests for any bugs you fix to prevent regressions.
+3.  Ensure all tests pass before submitting a pull request. Run tests using:
 ```bash
 poetry run pytest tests/
 ```
-*** Documentation: Update docstrings, examples, and the README.md as necessary to reflect your changes.
-*** Commit Messages: Write clear and concise commit messages explaining the "what" and "why" of your changes.
+* **Documentation:** Update docstrings, examples, and the README.md as necessary to reflect your changes.
+* **Commit Messages:** Write clear and concise commit messages explaining the "what" and "why" of your changes.
 # Submitting Changes (Pull Requests)
 1. Commit and Push: Commit your changes to your branch and push them to your fork on GitHub.
 ```bash
