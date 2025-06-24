@@ -23,7 +23,7 @@ if not logger.hasHandlers():
     logger.addHandler(logging.NullHandler())
 
 # Default base URL for the production API
-DEFAULT_BASE_URL = " https://api.moorcheh.ai/v1" # Your confirmed endpoint
+DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1" # Your confirmed endpoint
 
 class MoorchehClient:
     """
