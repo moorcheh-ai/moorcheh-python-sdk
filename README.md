@@ -14,6 +14,7 @@ This SDK simplifies the process of creating namespaces, ingesting data (text or 
 * **Namespace Management:** Create, list, and delete text or vector namespaces.
 * **Data Ingestion:** Upload text documents (with automatic embedding) or pre-computed vectors.
 * **Semantic Search:** Perform fast and accurate similarity searches using text or vector queries. Filter results using `top_k` and `threshold`.
+* **Gen-AI Response:** build an entire rag system in one shot.
 * **Data Deletion:** Remove specific documents or vectors from your namespaces by ID.
 * **Pythonic Interface:** Object-oriented client with clear methods and type hinting.
 * **Error Handling:** Custom exceptions for specific API errors (Authentication, Not Found, Invalid Input, etc.).
@@ -112,12 +113,18 @@ try:
         print("Search results:")
         print(search_res)
 
-        # 5. Delete the document
+         # 5. Get a Generative AI Answer
+        print(f"\nGetting a GenAI answer from '{namespace_name}'...")
+        gen_ai_res = client.get_generative_answer(namespace=namespace_name, query="What is Moorcheh?")
+        print("Generative Answer:")
+        print(gen_ai_res)
+
+        # 6. Delete the document
         print(f"\nDeleting document 'doc1' from '{namespace_name}'...")
         delete_res = client.delete_documents(namespace_name=namespace_name, ids=["doc1"])
         print(f"Delete status: {delete_res.get('status')}")
 
-        # 6. Delete the namespace (optional cleanup)
+        # 7. Delete the namespace (optional cleanup)
         # print(f"\nDeleting namespace '{namespace_name}'...")
         # client.delete_namespace(namespace_name)
         # print("Namespace deleted.")
@@ -176,6 +183,11 @@ upload_vectors(namespace_name, vectors) - For vector namespaces (sync processing
 ### Semantic Search
 ```python
 search(namespaces, query, top_k=10, threshold=None, kiosk_mode=False) - Handles text or vector queries.
+```
+### Generative AI Response
+```python
+get_generative_answer(namespace, query, top_k=5, ...) 
+- Gets a context-aware answer from an LLM.
 ```
 
 ### Data Deletion:

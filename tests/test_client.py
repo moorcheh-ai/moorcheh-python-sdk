@@ -17,7 +17,7 @@ from moorcheh_sdk import (
 
 # --- Constants for Testing ---
 DUMMY_API_KEY = "test_api_key_123"
-DEFAULT_BASE_URL = "https://kj88v2w4p9.execute-api.us-east-2.amazonaws.com/v1" # Match client default
+DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1/" # Match client default
 TEST_NAMESPACE = "test-namespace"
 TEST_NAMESPACE_2 = "another-namespace"
 TEST_VECTOR_DIM = 10
@@ -25,6 +25,7 @@ TEST_DOC_ID_1 = "doc-abc"
 TEST_DOC_ID_2 = 123 # Test integer ID
 TEST_VEC_ID_1 = "vec-xyz"
 TEST_VEC_ID_2 = 456 # Test integer ID
+SDK_VERSION = "1.1.0"
 
 # --- Fixtures ---
 
@@ -497,6 +498,118 @@ def test_search_invalid_input_server_side(client, mocker):
         client.search(namespaces=namespaces, query=query)
     client._mock_httpx_instance.request.assert_called_once()
 
+# Test get_generative_answer
+def test_get_generative_answer_success(client, mocker):
+    """Test successful call to get_generative_answer."""
+    query = "What is Moorcheh?"
+    model = "anthropic.claude-v2:1"
+    expected_response = {
+        "answer": "Moorcheh is a semantic search engine.",
+        "model": model,
+        "contextCount": 3,
+        "query": query
+    }
+    mock_resp = mock_response(mocker, 200, json_data=expected_response)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    result = client.get_generative_answer(namespace=TEST_NAMESPACE, query=query, top_k=3, ai_model=model)
+
+    expected_payload = {
+        "namespace": TEST_NAMESPACE,
+        "query": query,
+        "topK": 3,
+        "type": "text",
+        "aiModel": model,
+        "chatHistory": [],
+        "temperature": 0.7
+    }
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="POST", url="/gen-ai-answer", json=expected_payload, params=None
+    )
+    assert result == expected_response
+
+@pytest.mark.parametrize("ns, q, tk, model, temp, history, msg", [
+    ("", "q", 5, "m", 0.5, [], "'namespace' must be a non-empty string"),
+    (None, "q", 5, "m", 0.5, [], "'namespace' must be a non-empty string"),
+    ("ns", "", 5, "m", 0.5, [], "'query' must be a non-empty string"),
+    ("ns", "q", 0, "m", 0.5, [], "'top_k' must be a positive integer"),
+    ("ns", "q", -1, "m", 0.5, [], "'top_k' must be a positive integer"),
+    ("ns", "q", 5, "", 0.5, [], "'ai_model' must be a non-empty string"),
+    ("ns", "q", 5, "m", 1.1, [], "'temperature' must be a number between 0.0 and 1.0"),
+    ("ns", "q", 5, "m", -0.1, [], "'temperature' must be a number between 0.0 and 1.0"),
+    ("ns", "q", 5, "m", 0.5, "not-a-list", "'chat_history' must be a list of dictionaries or None"),
+])
+def test_get_generative_answer_invalid_input_client_side(client, ns, q, tk, model, temp, history, msg):
+    """Test client-side validation for get_generative_answer."""
+    with pytest.raises(InvalidInputError, match=msg):
+        client.get_generative_answer(
+            namespace=ns, query=q, top_k=tk, ai_model=model, temperature=temp, chat_history=history
+        )
+    client._mock_httpx_instance.request.assert_not_called()
+
+def test_get_generative_answer_server_error(client, mocker):
+    """Test get_generative_answer with a 500 server error."""
+    error_text = "API Error (Status: 500): Upstream LLM provider failed"
+    mock_resp = mock_response(mocker, 500, text_data="Upstream LLM provider failed")
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    with pytest.raises(APIError, match=error_text):
+        client.get_generative_answer(namespace=TEST_NAMESPACE, query="test")
+    client._mock_httpx_instance.request.assert_called_once()
+
+
+# Test delete_documents
+def test_delete_documents_success_200(client, mocker):
+    """Test successful deletion of documents (200 OK)."""
+    ids_to_delete = [TEST_DOC_ID_1, TEST_DOC_ID_2]
+    expected_response = {"status": "success", "deleted_ids": ids_to_delete, "errors": []}
+    mock_resp = mock_response(mocker, 200, json_data=expected_response)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    result = client.delete_documents(namespace_name=TEST_NAMESPACE, ids=ids_to_delete)
+
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="POST", url=f"/namespaces/{TEST_NAMESPACE}/documents/delete", json={"ids": ids_to_delete}, params=None
+    )
+    assert result == expected_response
+
+def test_delete_documents_partial_success_207(client, mocker):
+    """Test partial deletion of documents (207 Multi-Status)."""
+    ids_to_delete = [TEST_DOC_ID_1, "non-existent-id", TEST_DOC_ID_2]
+    expected_response = {
+        "status": "partial",
+        "deleted_ids": [TEST_DOC_ID_1, TEST_DOC_ID_2],
+        "errors": [{"id": "non-existent-id", "error": "ID not found"}]
+    }
+    mock_resp = mock_response(mocker, 207, json_data=expected_response)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    result = client.delete_documents(namespace_name=TEST_NAMESPACE, ids=ids_to_delete)
+
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="POST", url=f"/namespaces/{TEST_NAMESPACE}/documents/delete", json={"ids": ids_to_delete}, params=None
+    )
+    assert result == expected_response
+
+@pytest.mark.parametrize("invalid_ids", [
+    None, [], ["id1", ""], ["id1", None], [123, {}], "not a list"
+])
+def test_delete_documents_invalid_input_client_side(client, invalid_ids):
+    """Test client-side validation for delete_documents IDs."""
+    with pytest.raises(InvalidInputError):
+        client.delete_documents(namespace_name=TEST_NAMESPACE, ids=invalid_ids)
+    client._mock_httpx_instance.request.assert_not_called()
+
+def test_delete_documents_namespace_not_found(client, mocker):
+    """Test deleting documents from a non-existent namespace."""
+    ids = [TEST_DOC_ID_1]
+    error_text = f"Namespace '{TEST_NAMESPACE}' not found."
+    mock_resp = mock_response(mocker, 404, text_data=error_text)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    with pytest.raises(NamespaceNotFound, match=error_text):
+        client.delete_documents(namespace_name=TEST_NAMESPACE, ids=ids)
+    client._mock_httpx_instance.request.assert_called_once()
 
 # Test delete_documents
 def test_delete_documents_success_200(client, mocker):

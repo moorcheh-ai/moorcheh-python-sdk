@@ -9,7 +9,7 @@ from moorcheh_sdk import MoorchehClient, AuthenticationError
 
 # --- Constants (can also be defined here if shared) ---
 DUMMY_API_KEY = "test_api_key_123"
-DEFAULT_BASE_URL = "https://kj88v2w4p9.execute-api.us-east-2.amazonaws.com/v1"
+DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1"
 
 # --- Shared Fixtures ---
 
