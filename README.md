@@ -1,6 +1,6 @@
 # Moorcheh Python SDK
 
-[![Moorcheh.ai](https://raw.githubusercontent.com/mjfekri/moorcheh-python-sdk/main/assets/moorcheh-logo.png)](https://www.moorcheh.ai/)
+[![Moorcheh.ai](https://raw.githubusercontent.com/moorcheh-ai/moorcheh-python-sdk/main/assets/moorcheh-logo.png)](https://www.moorcheh.ai/)
 [![PyPI version](https://badge.fury.io/py/moorcheh-sdk.svg)](https://badge.fury.io/py/moorcheh-sdk) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/pypi/pyversions/moorcheh-sdk.svg)](https://pypi.org/project/moorcheh-sdk/)
 [![Downloads](https://static.pepy.tech/personalized-badge/moorcheh-sdk?period=total&units=international_system&left_color=grey&right_color=blue&left_text=Downloads)](https://pepy.tech/project/moorcheh-sdk)
@@ -31,7 +31,7 @@ pip install moorcheh-sdk
 
 If you want to contribute or run the examples locally, clone the repository and install using Poetry:
 ```bash
-git clone https://github.com/mjfekri/moorcheh-python-sdk.git
+git clone https://github.com/moorcheh-ai/moorcheh-python-sdk.git
 cd moorcheh-python-sdk
 poetry install --with dev
 ```
@@ -141,7 +141,7 @@ If you want to contribute, run tests, or run the example scripts directly from t
 
 Clone the repository:
 ```bash
-git clone https://github.com/mjfekri/moorcheh-python-sdk.git
+git clone https://github.com/moorcheh-ai/moorcheh-python-sdk.git
 cd moorcheh-python-sdk
 ```
 
@@ -210,7 +210,7 @@ get_umap_image(namespace_name, n_dimensions=2) - Not yet implemented
 (Refer to method docstrings or full documentation for detailed parameters and return types.)
 
 ## Documentation
-Full API reference and further examples can be found at: [https://www.moorcheh.ai/docs](https://www.moorcheh.ai/docs)
+Full API reference and further examples can be found at: [https://console.moorcheh.ai/docs](https://console.moorcheh.ai/docs)
 
 ## Contributing
 Contributions are welcome! Please refer to the contributing guidelines (CONTRIBUTING.md) for details on setting up the development environment, running tests, and submitting pull requests.
