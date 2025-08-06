@@ -465,6 +465,79 @@ class MoorchehClient:
         logger.info(f"Successfully queued {submitted_count} documents for upload to '{namespace_name}'. Status: {response_data.get('status')}")
         return response_data
 
+    def get_documents(
+        self,
+        namespace_name: str,
+        ids: List[Union[str, int]]
+    ) -> Dict[str, Any]:
+        """
+        Retrieves specific documents by their IDs from a text-based namespace.
+
+        This endpoint allows you to fetch documents that have been previously
+        uploaded and indexed, including all their metadata and content.
+
+        Args:
+            namespace_name: The name of the target text-based namespace.
+            ids: A list of document IDs (strings or integers) to retrieve.
+                Cannot be empty. Maximum of 100 IDs per request.
+
+        Returns:
+            A dictionary containing the retrieved documents.
+            Only documents that exist in the namespace will be returned.
+            Non-existent document IDs will be ignored.
+            Example:
+            ```json
+            {
+              "documents": [
+                {
+                  "id": "doc1",
+                  "text": "Document content...",
+                  "metadata": {"source": "file.txt"}
+                }
+              ]
+            }
+            ```
+
+        Raises:
+            InvalidInputError: If `namespace_name` is invalid, `ids` is not a
+                non-empty list of valid IDs, or if more than 100 IDs are provided.
+                Also raised for API 400 errors.
+            NamespaceNotFound: If the specified `namespace_name` does not exist
+                (API 404 error).
+            AuthenticationError: If the API key is invalid or lacks permissions.
+            APIError: For other unexpected API errors during the request.
+            MoorchehError: For network issues or client-side request problems.
+
+        Example:
+            >>> doc_ids = ["doc1", "doc2"]
+            >>> documents = client.get_documents("my-namespace", doc_ids)
+            >>> for doc in documents.get('documents', []):
+            ...     print(f"ID: {doc['id']}, Text: {doc['text'][:50]}...")
+        """
+        logger.info(f"Attempting to get {len(ids)} document(s) from namespace '{namespace_name}'...")
+        
+        if not namespace_name or not isinstance(namespace_name, str):
+            raise InvalidInputError("'namespace_name' must be a non-empty string.")
+        if not isinstance(ids, list) or not ids:
+            raise InvalidInputError("'ids' must be a non-empty list of strings or integers.")
+        if len(ids) > 100:
+            raise InvalidInputError("Maximum of 100 document IDs can be requested per call.")
+        if not all(isinstance(item_id, (str, int)) and item_id for item_id in ids):
+            raise InvalidInputError("All items in 'ids' list must be non-empty strings or integers.")
+
+        endpoint = f"/namespaces/{namespace_name}/documents/get"
+        payload = {"ids": ids}
+
+        response_data = self._request("POST", endpoint, json_data=payload, expected_status=200)
+
+        if not isinstance(response_data, dict):
+            logger.error("Get documents response was not a dictionary.")
+            raise APIError(message="Unexpected response format from get documents endpoint.")
+
+        doc_count = len(response_data.get('documents', []))
+        logger.info(f"Successfully retrieved {doc_count} document(s) from namespace '{namespace_name}'.")
+        return response_data
+
     def upload_vectors(
         self,
         namespace_name: str,
