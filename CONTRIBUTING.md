@@ -6,7 +6,7 @@ This document provides guidelines for contributing to this project.
 * **Suggesting Enhancements:** Have an idea for a new feature or an improvement to an existing one? Open an issue on GitHub. Clearly describe the proposed enhancement and why it would be beneficial.
 * **Code Contributions:** If you want to fix a bug or implement a feature, please follow the process outlined below.
 # Getting Started (Development Setup)
-1. Fork the Repository: Create your own fork of the moorcheh-python-sdk [https://github.com/mjfekri/moorcheh-python-sdk] repository on GitHub.
+1. Fork the Repository: Create your own fork of the moorcheh-python-sdk [https://github.com/moorcheh-ai/moorcheh-python-sdk] repository on GitHub.
 2. Clone Your Fork: Clone your forked repository to your local machine.
 ```bash
 git clone https://github.com/YOUR_USERNAME/moorcheh-python-sdk.git
