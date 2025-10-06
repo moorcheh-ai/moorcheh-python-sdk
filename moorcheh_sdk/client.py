@@ -765,7 +765,7 @@ class MoorchehClient:
         namespace: str,
         query: str,
         top_k: int = 5,
-        ai_model: str = "anthropic.claude-v2:1",
+        ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
         chat_history: Optional[List[Dict[str, Any]]] = None,
         temperature: float = 0.7
     ) -> Dict[str, Any]:
@@ -837,7 +837,7 @@ class MoorchehClient:
         payload: Dict[str, Any] = {
             "namespace": namespace,
             "query": query,
-            "topK": top_k,
+            "top_k": top_k,
             "type": "text",  # Hardcoded as per API design
             "aiModel": ai_model,
             "chatHistory": chat_history if chat_history is not None else [],
