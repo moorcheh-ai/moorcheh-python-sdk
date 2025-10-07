@@ -123,7 +123,9 @@ def run_quickstart():
                 vectors_to_upload.append({
                     "id": vec_id,
                     "vector": random_vector,
-                    "metadata": {"source": "quickstart_random", "index": i, "type": "random"}
+                    "source": "quickstart_random", 
+                    "index": i, 
+                    "type": "random"
                 })
             try:
                 upload_vec_res = client.upload_vectors(namespace_name=vector_ns_name, vectors=vectors_to_upload)
