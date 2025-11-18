@@ -24,6 +24,7 @@ if not logger.hasHandlers():
 
 # Default base URL for the production API
 DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1" # Your confirmed endpoint
+INVALID_ID_CHARS = [" ",]
 
 class MoorchehClient:
     """
@@ -447,6 +448,8 @@ class MoorchehClient:
                 raise InvalidInputError(f"Item at index {i} in 'documents' is not a dictionary.")
             if 'id' not in doc or not doc['id']:
                  raise InvalidInputError(f"Item at index {i} in 'documents' is missing required key 'id' or it is empty.")
+            if any(char in doc['id'] for char in INVALID_ID_CHARS):
+                 raise InvalidInputError(f"Item at index {i} in 'documents' has an invalid ID. Invalid characters: {INVALID_ID_CHARS!r}")
             if 'text' not in doc or not isinstance(doc['text'], str) or not doc['text'].strip():
                  raise InvalidInputError(f"Item at index {i} in 'documents' is missing required key 'text' or it is not a non-empty string.")
 
@@ -1018,4 +1021,5 @@ class MoorchehClient:
         Ensures the underlying HTTP client is closed.
         """
         self.close()
+
 
