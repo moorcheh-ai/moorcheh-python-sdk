@@ -86,7 +86,8 @@ class MoorchehClient:
         if not self.api_key:
             # No need to log here, the exception itself is the signal
             raise AuthenticationError(
-                "API key not provided. Pass it to the constructor or set the MOORCHEH_API_KEY environment variable."
+                "API key not provided. Pass it to the constructor or set the"
+                " MOORCHEH_API_KEY environment variable."
             )
 
         self.base_url = (
@@ -112,7 +113,8 @@ class MoorchehClient:
         )
         # Log successful initialization at INFO level
         logger.info(
-            f"MoorchehClient initialized. Base URL: {self.base_url}, SDK Version: {sdk_version}"
+            f"MoorchehClient initialized. Base URL: {self.base_url}, SDK Version:"
+            f" {sdk_version}"
         )
 
     def _request(
@@ -149,13 +151,14 @@ class MoorchehClient:
             ConflictError: For 409 Conflict errors from the API.
             APIError: For other 4xx/5xx HTTP errors or issues decoding a successful response.
             MoorchehError: For client-side errors like network issues or timeouts.
-        """
+        """  # noqa: E501
         if not endpoint.startswith("/"):
             endpoint = "/" + endpoint
         url = f"{self.base_url}{endpoint}"  # Full URL for logging clarity
         # Log the request attempt at DEBUG level
         logger.debug(
-            f"Making {method} request to {url} with payload: {json_data} and params: {params}"
+            f"Making {method} request to {url} with payload: {json_data} and params:"
+            f" {params}"
         )
 
         try:
@@ -183,13 +186,15 @@ class MoorchehClient:
                 content_type = response.headers.get("content-type", "").lower()
                 if content_type == "image/png":
                     logger.info(
-                        f"Request to {endpoint} successful (Status: {response.status_code}, Content-Type: PNG)"
+                        f"Request to {endpoint} successful (Status:"
+                        f" {response.status_code}, Content-Type: PNG)"
                     )
                     return response.content
 
                 try:
                     logger.info(
-                        f"Request to {endpoint} successful (Status: {response.status_code})"
+                        f"Request to {endpoint} successful (Status:"
+                        f" {response.status_code})"
                     )
                     if not response.content:
                         logger.debug("Response content is empty, returning empty dict.")
@@ -198,9 +203,10 @@ class MoorchehClient:
                     logger.debug(f"Decoded JSON response: {json_response}")
                     return json_response
                 except Exception as json_e:
-                    # Log JSON decoding errors at WARNING level, as the status code was successful
+                    # Log JSON decoding errors at WARNING level, as the status code was successful # noqa: E501
                     logger.warning(
-                        f"Error decoding JSON response despite success status {response.status_code} from {endpoint}: {json_e}",
+                        "Error decoding JSON response despite success status"
+                        f" {response.status_code} from {endpoint}: {json_e}",
                         exc_info=True,
                     )
                     raise APIError(
@@ -210,7 +216,8 @@ class MoorchehClient:
 
             # Log error responses before raising exceptions
             logger.warning(
-                f"Request to {endpoint} failed with status {response.status_code}. Response text: {response.text}"
+                f"Request to {endpoint} failed with status {response.status_code}."
+                f" Response text: {response.text}"
             )
 
             # Map HTTP error statuses to specific exceptions
@@ -322,7 +329,7 @@ class MoorchehClient:
             >>> # Create a vector namespace
             >>> vector_ns_info = client.create_namespace("my-image-vectors", "vector", 512)
             >>> print(vector_ns_info)
-        """
+        """  # noqa: E501
         logger.info(
             f"Attempting to create namespace '{namespace_name}' of type '{type}'..."
         )
@@ -353,12 +360,13 @@ class MoorchehClient:
         )
 
         if not isinstance(response_data, dict):
-            # This case should ideally be caught by _request's JSON decoding, but check defensively
+            # This case should ideally be caught by _request's JSON decoding, but check defensively # noqa: E501
             logger.error("Create namespace response was not a dictionary as expected.")
             raise APIError("Unexpected response format after creating namespace.")
 
         logger.info(
-            f"Successfully created namespace '{namespace_name}'. Response: {response_data}"
+            f"Successfully created namespace '{namespace_name}'. Response:"
+            f" {response_data}"
         )
         return response_data
 
@@ -451,7 +459,10 @@ class MoorchehClient:
                 "List namespaces response missing 'namespaces' key or it's not a list."
             )
             raise APIError(
-                message="Invalid response structure: 'namespaces' key missing or not a list."
+                message=(
+                    "Invalid response structure: 'namespaces' key missing or not a"
+                    " list."
+                )
             )
 
         count = len(response_data.get("namespaces", []))
@@ -498,9 +509,10 @@ class MoorchehClient:
             ... ]
             >>> upload_status = client.upload_documents("my-reports", docs_to_add)
             >>> print(upload_status)
-        """
+        """  # noqa: E501
         logger.info(
-            f"Attempting to upload {len(documents)} documents to namespace '{namespace_name}'..."
+            f"Attempting to upload {len(documents)} documents to namespace"
+            f" '{namespace_name}'..."
         )
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
@@ -516,7 +528,8 @@ class MoorchehClient:
                 )
             if "id" not in doc or not doc["id"]:
                 raise InvalidInputError(
-                    f"Item at index {i} in 'documents' is missing required key 'id' or it is empty."
+                    f"Item at index {i} in 'documents' is missing required key 'id' or"
+                    " it is empty."
                 )
             if (
                 "text" not in doc
@@ -524,7 +537,8 @@ class MoorchehClient:
                 or not doc["text"].strip()
             ):
                 raise InvalidInputError(
-                    f"Item at index {i} in 'documents' is missing required key 'text' or it is not a non-empty string."
+                    f"Item at index {i} in 'documents' is missing required key 'text'"
+                    " or it is not a non-empty string."
                 )
 
         endpoint = f"/namespaces/{namespace_name}/documents"
@@ -544,7 +558,8 @@ class MoorchehClient:
 
         submitted_count = len(response_data.get("submitted_ids", []))
         logger.info(
-            f"Successfully queued {submitted_count} documents for upload to '{namespace_name}'. Status: {response_data.get('status')}"
+            f"Successfully queued {submitted_count} documents for upload to"
+            f" '{namespace_name}'. Status: {response_data.get('status')}"
         )
         return response_data
 
@@ -596,7 +611,8 @@ class MoorchehClient:
             ...     print(f"ID: {doc['id']}, Text: {doc['text'][:50]}...")
         """
         logger.info(
-            f"Attempting to get {len(ids)} document(s) from namespace '{namespace_name}'..."
+            f"Attempting to get {len(ids)} document(s) from namespace"
+            f" '{namespace_name}'..."
         )
 
         if not namespace_name or not isinstance(namespace_name, str):
@@ -629,7 +645,8 @@ class MoorchehClient:
 
         doc_count = len(response_data.get("documents", []))
         logger.info(
-            f"Successfully retrieved {doc_count} document(s) from namespace '{namespace_name}'."
+            f"Successfully retrieved {doc_count} document(s) from namespace"
+            f" '{namespace_name}'."
         )
         return response_data
 
@@ -678,9 +695,10 @@ class MoorchehClient:
             ... ]
             >>> upload_status = client.upload_vectors("my-image-vectors", vectors_to_add)
             >>> print(upload_status)
-        """
+        """  # noqa: E501
         logger.info(
-            f"Attempting to upload {len(vectors)} vectors to namespace '{namespace_name}'..."
+            f"Attempting to upload {len(vectors)} vectors to namespace"
+            f" '{namespace_name}'..."
         )
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
@@ -696,11 +714,13 @@ class MoorchehClient:
                 )
             if "id" not in vec_item or not vec_item["id"]:
                 raise InvalidInputError(
-                    f"Item at index {i} in 'vectors' is missing required key 'id' or it is empty."
+                    f"Item at index {i} in 'vectors' is missing required key 'id' or it"
+                    " is empty."
                 )
             if "vector" not in vec_item or not isinstance(vec_item["vector"], list):
                 raise InvalidInputError(
-                    f"Item at index {i} with id '{vec_item['id']}' is missing required key 'vector' or it is not a list."
+                    f"Item at index {i} with id '{vec_item['id']}' is missing required"
+                    " key 'vector' or it is not a list."
                 )
 
         endpoint = f"/namespaces/{namespace_name}/vectors"
@@ -725,7 +745,9 @@ class MoorchehClient:
         processed_count = len(response_data.get("vector_ids_processed", []))
         error_count = len(response_data.get("errors", []))
         logger.info(
-            f"Upload vectors to '{namespace_name}' completed. Status: {response_data.get('status')}, Processed: {processed_count}, Errors: {error_count}"
+            f"Upload vectors to '{namespace_name}' completed. Status:"
+            f" {response_data.get('status')}, Processed: {processed_count}, Errors:"
+            f" {error_count}"
         )
         if error_count > 0:
             logger.warning(
@@ -829,10 +851,11 @@ class MoorchehClient:
             ...     threshold=0.7
             ... )
             >>> print(vector_results)
-        """
+        """  # noqa: E501
         query_type = "vector" if isinstance(query, list) else "text"
         logger.info(
-            f"Attempting {query_type} search in namespace(s) '{', '.join(namespaces)}' with top_k={top_k}, threshold={threshold}, kiosk={kiosk_mode}..."
+            f"Attempting {query_type} search in namespace(s) '{', '.join(namespaces)}'"
+            f" with top_k={top_k}, threshold={threshold}, kiosk={kiosk_mode}..."
         )
 
         if not isinstance(namespaces, list) or not namespaces:
@@ -878,7 +901,8 @@ class MoorchehClient:
         result_count = len(response_data.get("results", []))
         exec_time = response_data.get("execution_time", "N/A")
         logger.info(
-            f"Search completed successfully. Found {result_count} result(s). Execution time: {exec_time}s."
+            f"Search completed successfully. Found {result_count} result(s). Execution"
+            f" time: {exec_time}s."
         )
         logger.debug(
             f"Search results: {response_data}"
@@ -943,7 +967,8 @@ class MoorchehClient:
             >>> print(gen_ai_response['answer'])
         """
         logger.info(
-            f"Attempting to get generative answer for query in namespace '{namespace}'..."
+            "Attempting to get generative answer for query in namespace"
+            f" '{namespace}'..."
         )
 
         # Client-side validation
@@ -988,7 +1013,8 @@ class MoorchehClient:
             )
 
         logger.info(
-            f"Successfully received generative answer. Model used: {response_data.get('model')}"
+            "Successfully received generative answer. Model used:"
+            f" {response_data.get('model')}"
         )
         return response_data
 
@@ -1024,9 +1050,10 @@ class MoorchehClient:
             >>> ids_to_remove = ["old-doc-1", "temp-doc-5"]
             >>> delete_status = client.delete_documents("my-reports", ids_to_remove)
             >>> print(delete_status)
-        """
+        """  # noqa: E501
         logger.info(
-            f"Attempting to delete {len(ids)} document(s) from namespace '{namespace_name}' with IDs: {ids}"
+            f"Attempting to delete {len(ids)} document(s) from namespace"
+            f" '{namespace_name}' with IDs: {ids}"
         )
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
@@ -1060,7 +1087,9 @@ class MoorchehClient:
         deleted_count = len(response_data.get("deleted_ids", []))
         error_count = len(response_data.get("errors", []))
         logger.info(
-            f"Delete documents from '{namespace_name}' completed. Status: {response_data.get('status')}, Deleted: {deleted_count}, Errors: {error_count}"
+            f"Delete documents from '{namespace_name}' completed. Status:"
+            f" {response_data.get('status')}, Deleted: {deleted_count}, Errors:"
+            f" {error_count}"
         )
         if error_count > 0:
             logger.warning(
@@ -1100,9 +1129,10 @@ class MoorchehClient:
             >>> vector_ids_to_remove = ["img005", "img102"]
             >>> delete_status = client.delete_vectors("my-image-vectors", vector_ids_to_remove)
             >>> print(delete_status)
-        """
+        """  # noqa: E501
         logger.info(
-            f"Attempting to delete {len(ids)} vector(s) from namespace '{namespace_name}' with IDs: {ids}"
+            f"Attempting to delete {len(ids)} vector(s) from namespace"
+            f" '{namespace_name}' with IDs: {ids}"
         )
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
@@ -1134,7 +1164,9 @@ class MoorchehClient:
         deleted_count = len(response_data.get("deleted_ids", []))
         error_count = len(response_data.get("errors", []))
         logger.info(
-            f"Delete vectors from '{namespace_name}' completed. Status: {response_data.get('status')}, Deleted: {deleted_count}, Errors: {error_count}"
+            f"Delete vectors from '{namespace_name}' completed. Status:"
+            f" {response_data.get('status')}, Deleted: {deleted_count}, Errors:"
+            f" {error_count}"
         )
         if error_count > 0:
             logger.warning(

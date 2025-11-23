@@ -18,7 +18,7 @@ from moorcheh_sdk import (
 # --- Configure Logging ---
 # Set up basic configuration for logging
 logging.basicConfig(
-    level=logging.INFO,  # Set the minimum level to capture (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -64,7 +64,8 @@ def run_quickstart():
                     namespace_name=text_ns_name, type="text"
                 )
                 logger.info(
-                    f"Text Namespace creation response: {json.dumps(creation_response_text, indent=2)}"
+                    "Text Namespace creation response:"
+                    f" {json.dumps(creation_response_text, indent=2)}"
                 )
             except ConflictError:
                 logger.warning(f"Text Namespace '{text_ns_name}' already exists.")
@@ -75,7 +76,8 @@ def run_quickstart():
 
             try:
                 logger.info(
-                    f"[Step 1b] Creating vector namespace: '{vector_ns_name}' (Dim: {vector_dim})"
+                    f"[Step 1b] Creating vector namespace: '{vector_ns_name}' (Dim:"
+                    f" {vector_dim})"
                 )
                 creation_response_vector = client.create_namespace(
                     namespace_name=vector_ns_name,
@@ -83,7 +85,8 @@ def run_quickstart():
                     vector_dimension=vector_dim,
                 )
                 logger.info(
-                    f"Vector Namespace creation response: {json.dumps(creation_response_vector, indent=2)}"
+                    "Vector Namespace creation response:"
+                    f" {json.dumps(creation_response_vector, indent=2)}"
                 )
             except ConflictError:
                 logger.warning(f"Vector Namespace '{vector_ns_name}' already exists.")
@@ -129,7 +132,8 @@ def run_quickstart():
                     namespace_name=text_ns_name, documents=docs_to_upload
                 )
                 logger.info(
-                    f"Upload documents response (queued): {json.dumps(upload_doc_res, indent=2)}"
+                    "Upload documents response (queued):"
+                    f" {json.dumps(upload_doc_res, indent=2)}"
                 )
             except (NamespaceNotFound, InvalidInputError) as e:
                 logger.error(f"Could not upload documents to '{text_ns_name}': {e}")
@@ -162,7 +166,8 @@ def run_quickstart():
                     namespace_name=vector_ns_name, vectors=vectors_to_upload
                 )
                 logger.info(
-                    f"Upload vectors response (processed): {json.dumps(upload_vec_res, indent=2)}"
+                    "Upload vectors response (processed):"
+                    f" {json.dumps(upload_vec_res, indent=2)}"
                 )
             except (NamespaceNotFound, InvalidInputError) as e:
                 logger.error(f"Could not upload vectors to '{vector_ns_name}': {e}")
@@ -182,7 +187,8 @@ def run_quickstart():
 
             # --- 5. Search Text Namespace ---
             logger.info(
-                f"[Step 5] Searching text namespace '{text_ns_name}' for 'API interaction'"
+                f"[Step 5] Searching text namespace '{text_ns_name}' for 'API"
+                " interaction'"
             )
             try:
                 text_search_res = client.search(
@@ -202,7 +208,8 @@ def run_quickstart():
 
             # --- 6. Search Vector Namespace ---
             logger.info(
-                f"[Step 6] Searching vector namespace '{vector_ns_name}' with a random vector"
+                f"[Step 6] Searching vector namespace '{vector_ns_name}' with a random"
+                " vector"
             )
             try:
                 # Generate a new random query vector
@@ -227,7 +234,8 @@ def run_quickstart():
             # --- 7. Delete Items ---
             doc_id_to_delete = "qs-doc-2"
             logger.info(
-                f"[Step 7a] Deleting document '{doc_id_to_delete}' from '{text_ns_name}'..."
+                f"[Step 7a] Deleting document '{doc_id_to_delete}' from"
+                f" '{text_ns_name}'..."
             )
             try:
                 del_doc_res = client.delete_documents(
@@ -246,7 +254,8 @@ def run_quickstart():
 
             vec_id_to_delete = "qs-vec-3"
             logger.info(
-                f"[Step 7b] Deleting vector '{vec_id_to_delete}' from '{vector_ns_name}'..."
+                f"[Step 7b] Deleting vector '{vec_id_to_delete}' from"
+                f" '{vector_ns_name}'..."
             )
             try:
                 del_vec_res = client.delete_vectors(
@@ -268,7 +277,7 @@ def run_quickstart():
             # try:
             #     client.delete_namespace(text_ns_name)
             # except NamespaceNotFound:
-            #     logger.warning(f"Namespace '{text_ns_name}' likely already deleted or never created.")
+            #     logger.warning(f"Namespace '{text_ns_name}' likely already deleted or never created.") # noqa: E501
             # except Exception as e:
             #      logger.error(f"Error deleting '{text_ns_name}': {e}", exc_info=True)
 
@@ -276,9 +285,9 @@ def run_quickstart():
             # try:
             #     client.delete_namespace(vector_ns_name)
             # except NamespaceNotFound:
-            #     logger.warning(f"Namespace '{vector_ns_name}' likely already deleted or never created.")
+            #     logger.warning(f"Namespace '{vector_ns_name}' likely already deleted or never created.") # noqa: E501
             # except Exception as e:
-            #      logger.error(f"Error deleting '{vector_ns_name}': {e}", exc_info=True)
+            #      logger.error(f"Error deleting '{vector_ns_name}': {e}", exc_info=True) # noqa: E501
 
             # logger.info("Cleanup complete (if uncommented).")
 

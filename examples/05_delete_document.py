@@ -16,7 +16,7 @@ from moorcheh_sdk import (
 # --- Configure Logging ---
 # Set up basic configuration for logging
 logging.basicConfig(
-    level=logging.INFO,  # Set the minimum level to capture (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -27,7 +27,8 @@ logger = logging.getLogger(__name__)
 
 def main():
     """
-    Example script to delete a single document chunk from a text namespace using the SDK, with logging.
+    Example script to delete a single document chunk from
+    a text namespace using the SDK, with logging.
     """
     logger.info("--- Moorcheh SDK: Delete Document Example ---")
 
@@ -56,7 +57,8 @@ def main():
     # ----------------------------------------------------
 
     logger.info(
-        f"Attempting to delete document ID '{document_id_to_delete}' from namespace: '{target_namespace}'"
+        f"Attempting to delete document ID '{document_id_to_delete}' from namespace:"
+        f" '{target_namespace}'"
     )
 
     # 3. Call the delete_documents method
@@ -77,12 +79,14 @@ def main():
                 # Check if the specific ID is in the returned list (optional validation)
                 if document_id_to_delete in response.get("deleted_ids", []):
                     logger.info(
-                        f"Successfully processed deletion request for document ID '{document_id_to_delete}'. ✅"
+                        "Successfully processed deletion request for document ID"
+                        f" '{document_id_to_delete}'. ✅"
                     )
                 else:
-                    # This case might happen if the ID didn't exist but the call succeeded
+                    # This case might happen if the ID didn't exist but the call succeed
                     logger.warning(
-                        f"Deletion request processed, but ID '{document_id_to_delete}' might not have been present."
+                        f"Deletion request processed, but ID '{document_id_to_delete}'"
+                        " might not have been present."
                     )
             elif response and response.get("status") == "partial":
                 logger.warning(
@@ -90,7 +94,8 @@ def main():
                 )
             else:
                 logger.warning(
-                    f"Deletion request sent, but status was not 'success' or 'partial'. Status: {response.get('status')}. Check response details."
+                    "Deletion request sent, but status was not 'success' or 'partial'."
+                    f" Status: {response.get('status')}. Check response details."
                 )
 
     # 4. Handle Specific Errors using logger.error or logger.exception

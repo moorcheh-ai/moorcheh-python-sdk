@@ -31,7 +31,8 @@ try:
 except ImportError as e:
     print(f"ERROR: Failed to import Moorcheh SDK: {e}")
     print(
-        "Ensure you are running this script from the project root using 'poetry run python benchmarks/benchmark_response_time.py'"
+        "Ensure you are running this script from the project root using 'poetry run"
+        " python benchmarks/benchmark_response_time.py'"
     )
     print("Or that the SDK package is installed in your environment.")
     sys.exit(1)
@@ -75,7 +76,9 @@ def parse_arguments():
         "--batch-size",
         type=int,
         default=DEFAULT_UPLOAD_BATCH_SIZE,
-        help=f"Number of vectors per upload batch (default: {DEFAULT_UPLOAD_BATCH_SIZE})",
+        help=(
+            f"Number of vectors per upload batch (default: {DEFAULT_UPLOAD_BATCH_SIZE})"
+        ),
     )
     parser.add_argument(
         "-k",
@@ -88,18 +91,27 @@ def parse_arguments():
         "--namespace",
         type=str,
         default=f"{DEFAULT_NAMESPACE_PREFIX}{random.randint(1000, 9999)}",
-        help=f"Name of the namespace to create/use (default: {DEFAULT_NAMESPACE_PREFIX}<random>)",
+        help=(
+            "Name of the namespace to create/use (default:"
+            f" {DEFAULT_NAMESPACE_PREFIX}<random>)"
+        ),
     )
     parser.add_argument(
         "--base-url",
         type=str,
         default=None,
-        help="Optional base URL for the Moorcheh API (overrides SDK default and MOORCHEH_BASE_URL env var)",
+        help=(
+            "Optional base URL for the Moorcheh API (overrides SDK default and"
+            " MOORCHEH_BASE_URL env var)"
+        ),
     )
     parser.add_argument(
         "--keep-namespace",
         action="store_true",
-        help="If set, the script will not prompt to delete the namespace after the benchmark.",
+        help=(
+            "If set, the script will not prompt to delete the namespace after the"
+            " benchmark."
+        ),
     )
     return parser.parse_args()
 
@@ -142,7 +154,8 @@ def run_benchmark(args):
     if not api_key:
         print("ERROR: Environment variable MOORCHEH_API_KEY is not set.")
         print(
-            "Please set it before running the script (e.g., export MOORCHEH_API_KEY='your_key')"
+            "Please set it before running the script (e.g., export"
+            " MOORCHEH_API_KEY='your_key')"
         )
         sys.exit(1)
     print("API Key loaded from environment variable.")
@@ -160,7 +173,8 @@ def run_benchmark(args):
         with client:  # Use context manager for client cleanup
             # 1. Create Namespace
             print(
-                f"\n[1] Ensuring vector namespace exists: '{args.namespace}' (Dim: {args.dimension})"
+                f"\n[1] Ensuring vector namespace exists: '{args.namespace}' (Dim:"
+                f" {args.dimension})"
             )
             try:
                 client.create_namespace(
@@ -172,9 +186,11 @@ def run_benchmark(args):
                 namespace_created = True
             except ConflictError:
                 print(
-                    f"Namespace '{args.namespace}' already exists. Attempting to use it."
+                    f"Namespace '{args.namespace}' already exists. Attempting to"
+                    " use it."
                 )
-                # Need to verify type/dimension if using existing? For benchmark, assume it's compatible.
+                # Need to verify type/dimension if using existing?
+                # For benchmark, assume it's compatible.
                 namespace_created = True  # Mark as 'created' for cleanup logic
             except Exception as e:
                 print(f"ERROR: Failed to create/confirm namespace: {e}")
@@ -192,7 +208,9 @@ def run_benchmark(args):
                 payload = create_upload_payload(batch_vectors, start_index=i)
                 batch_num = (i // args.batch_size) + 1
                 print(
-                    f"  Uploading batch {batch_num}/{(args.num_vectors + args.batch_size - 1) // args.batch_size} ({len(batch_vectors)} vectors)..."
+                    "  Uploading batch"
+                    f" {batch_num}/{(args.num_vectors + args.batch_size - 1) // args.batch_size}"  # noqa: E501
+                    f" ({len(batch_vectors)} vectors)..."
                 )
                 try:
                     upload_response = client.upload_vectors(
@@ -211,7 +229,8 @@ def run_benchmark(args):
                         print(f"  Response: {json.dumps(upload_response)}")
                     else:
                         print(
-                            f"  WARNING: Upload batch {batch_num} returned unexpected status: {upload_response.get('status')}"
+                            f"  WARNING: Upload batch {batch_num} returned unexpected"
+                            f" status: {upload_response.get('status')}"
                         )
                         print(f"  Response: {json.dumps(upload_response)}")
                 except Exception as e:
@@ -219,7 +238,9 @@ def run_benchmark(args):
                     # Decide if you want to stop or continue on batch upload error
             upload_end_time = time.time()
             print(
-                f"Vector upload process finished. Attempted to upload {uploaded_count}/{args.num_vectors} vectors in {upload_end_time - upload_start_time:.2f} seconds."
+                "Vector upload process finished. Attempted to upload"
+                f" {uploaded_count}/{args.num_vectors} vectors in"
+                f" {upload_end_time - upload_start_time:.2f} seconds."
             )
 
             # Optional: Add a small delay
@@ -240,13 +261,15 @@ def run_benchmark(args):
                     if isinstance(exec_time, (int, float)):
                         search_times.append(exec_time)
                         print(
-                            f"    Query {i + 1} successful. API Execution Time: {exec_time:.4f}s"
+                            f"    Query {i + 1} successful. API Execution Time:"
+                            f" {exec_time:.4f}s"
                         )
                     else:
                         print(
-                            f"    Query {i + 1} succeeded but 'execution_time' was missing/invalid."
+                            f"    Query {i + 1} succeeded but 'execution_time' was"
+                            " missing/invalid."
                         )
-                        # print(f"    Response: {json.dumps(search_response)}") # Avoid printing large results
+                        # print(f"    Response: {json.dumps(search_response)}") # Avoid printing large results # noqa: E501
                 except Exception as e:
                     print(f"    ERROR during search query {i + 1}: {e}")
                 time.sleep(0.5)  # Small delay between queries
@@ -324,12 +347,14 @@ def run_benchmark(args):
                 print("Namespace deleted successfully.")
             except Exception as e:
                 print(
-                    f"ERROR during cleanup: Failed to delete namespace '{args.namespace}': {e}"
+                    "ERROR during cleanup: Failed to delete namespace"
+                    f" '{args.namespace}': {e}"
                 )
         else:
             if namespace_created and not args.keep_namespace:
                 print(
-                    f"\nSkipping deletion of namespace '{args.namespace}'. Please delete it manually if needed."
+                    f"\nSkipping deletion of namespace '{args.namespace}'. Please"
+                    " delete it manually if needed."
                 )
 
         print("\nBenchmark script finished.")

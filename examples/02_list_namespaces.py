@@ -14,7 +14,7 @@ from moorcheh_sdk import (
 # --- Configure Logging ---
 # Set up basic configuration for logging
 logging.basicConfig(
-    level=logging.INFO,  # Set the minimum level to capture (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -66,7 +66,7 @@ def main():
                 logger.info(f"Successfully retrieved {num_namespaces} namespace(s). ✅")
                 # Optionally iterate and log names at DEBUG level if needed
                 # for ns in response['namespaces']:
-                #     logger.debug(f" - {ns.get('namespace_name')} (Type: {ns.get('type')}, Items: {ns.get('itemCount')})")
+                #     logger.debug(f" - {ns.get('namespace_name')} (Type: {ns.get('type')}, Items: {ns.get('itemCount')})") # noqa: E501
             else:
                 # Log a warning if the expected key is missing
                 logger.warning(

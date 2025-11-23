@@ -85,9 +85,11 @@ def mock_response(
         response.content = (
             b"{}"
             if isinstance(json_data, dict) and not json_data
-            else b"[]"
-            if isinstance(json_data, list) and not json_data
-            else b'{"data": "dummy"}'
+            else (
+                b"[]"
+                if isinstance(json_data, list) and not json_data
+                else b'{"data": "dummy"}'
+            )
         )
     else:
         response.json.side_effect = Exception(
@@ -134,7 +136,7 @@ def test_client_initialization_success_with_key(mock_httpx_client):
                 "x-api-key": DUMMY_API_KEY,
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-                "User-Agent": "moorcheh-python-sdk/0.1.0",  # Ensure this matches __init__.py version
+                "User-Agent": "moorcheh-python-sdk/0.1.0",  # Ensure this matches __init__.py version  # noqa: E501
             },
             timeout=30.0,  # Default timeout
         )
@@ -694,10 +696,12 @@ def test_search_namespace_not_found(client, mocker):
     mock_resp = mock_response(mocker, 404, text_data=error_text)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    # Note: The _request method maps 404 to NamespaceNotFound specifically for /namespaces/{name} endpoints.
-    # For /search, a 404 might indicate the endpoint itself is wrong, or the API might return 400/404 with specific messages.
-    # We'll test the NamespaceNotFound mapping here, assuming the API *could* return 404 this way,
-    # but also test 400 below. Adjust based on actual API behavior.
+    """
+    Note: The _request method maps 404 to NamespaceNotFound specifically for /namespaces/{name} endpoints.
+    For /search, a 404 might indicate the endpoint itself is wrong, or the API might return 400/404 with specific messages.
+    We'll test the NamespaceNotFound mapping here, assuming the API *could* return 404 this way,
+    but also test 400 below. Adjust based on actual API behavior.
+    """  # noqa: E501
     with pytest.raises(
         NamespaceNotFound, match=error_text
     ):  # Assuming _request maps 404 correctly here too based on text
@@ -996,12 +1000,15 @@ def test_client_context_manager(mock_httpx_client):
             assert isinstance(client_instance, MoorchehClient)
             # Simulate doing something with the client if needed
             client_instance.list_namespaces()  # Call any method
-        # After exiting the 'with' block, close should have been called on the mock httpx instance
+        # After exiting the 'with' block,
+        # close should have been called on the mock httpx instance
         mock_httpx_client.close.assert_called_once()
 
 
 def test_client_explicit_close(mock_httpx_client):
-    """Test that calling client.close() explicitly calls the underlying client's close."""
+    """
+    Test that calling client.close() explicitly calls the underlying client's close.
+    """
     with patch.dict(os.environ, {}, clear=True):  # Isolate from env vars
         client_instance = MoorchehClient(api_key=DUMMY_API_KEY)
         client_instance.close()

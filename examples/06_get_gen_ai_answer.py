@@ -16,7 +16,7 @@ from moorcheh_sdk import (
 # --- Configure Logging ---
 # Set up basic configuration for logging
 logging.basicConfig(
-    level=logging.INFO,  # Set the minimum level to capture (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -82,7 +82,8 @@ def main():
                 print("------------------------\n")
             else:
                 logger.warning(
-                    "Request completed, but response format might be unexpected or missing 'answer'."
+                    "Request completed, but response format might be unexpected or"
+                    " missing 'answer'."
                 )
 
     # 4. Handle Specific Errors using logger.error or logger.exception

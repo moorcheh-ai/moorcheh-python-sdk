@@ -19,7 +19,10 @@ class AuthenticationError(MoorchehError):
 
 
 class InvalidInputError(MoorchehError):
-    """Raised for client-side errors like invalid parameters or request body (400 Bad Request)."""
+    """
+    Raised for client-side errors like invalid parameters
+    or request body (400 Bad Request).
+    """
 
     def __init__(self, message="Invalid input provided."):
         super().__init__(message)

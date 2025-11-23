@@ -16,7 +16,7 @@ from moorcheh_sdk import (
 # --- Configure Logging ---
 # Set up basic configuration for logging
 logging.basicConfig(
-    level=logging.INFO,  # Set the minimum level to capture (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -66,14 +66,18 @@ def main():
         },
         {
             "id": "sdk-doc-003",
-            "text": "Each document needs a unique ID and text content. Metadata is optional but useful.",
+            "text": (
+                "Each document needs a unique ID and text content. Metadata is optional"
+                " but useful."
+            ),
             "source": "sdk_example_03",
             "topic": "data_format",
         },
     ]
 
     logger.info(
-        f"Attempting to upload {len(documents_to_upload)} documents to namespace: '{target_namespace}'"
+        f"Attempting to upload {len(documents_to_upload)} documents to namespace:"
+        f" '{target_namespace}'"
     )
 
     # 3. Call the upload_documents method
@@ -91,11 +95,12 @@ def main():
             if response.get("status") == "queued":
                 submitted_count = len(response.get("submitted_ids", []))
                 logger.info(
-                    f"Successfully queued {submitted_count} documents for processing! ✅"
+                    f"Successfully queued {submitted_count} documents for processing!✅"
                 )
             else:
                 logger.warning(
-                    f"Upload request sent, but status was not 'queued'. Status: {response.get('status')}. Check response details."
+                    "Upload request sent, but status was not 'queued'. Status:"
+                    f" {response.get('status')}. Check response details."
                 )
 
     # 4. Handle Specific Errors using logger.error or logger.exception
