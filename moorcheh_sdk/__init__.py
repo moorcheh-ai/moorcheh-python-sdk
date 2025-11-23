@@ -3,12 +3,12 @@
 # Expose the client and exceptions at the package level for easier imports
 from .client import MoorchehClient
 from .exceptions import (
-    MoorchehError,
-    AuthenticationError,
-    InvalidInputError,
-    NamespaceNotFound,
-    ConflictError,
     APIError,
+    AuthenticationError,
+    ConflictError,
+    InvalidInputError,
+    MoorchehError,
+    NamespaceNotFound,
 )
 
 # Define package version (can be read from pyproject.toml in more advanced setups)

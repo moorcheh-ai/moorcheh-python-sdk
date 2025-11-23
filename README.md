@@ -37,9 +37,9 @@ poetry install --with dev
 ```
 
 ## Authentication
-The SDK requires a Moorcheh API key for authentication. Obtain an API Key: Sign up and generate an API key through the Moorcheh.ai [https://moorcheh.ai] platform dashboard. 
+The SDK requires a Moorcheh API key for authentication. Obtain an API Key: Sign up and generate an API key through the Moorcheh.ai [https://moorcheh.ai] platform dashboard.
 
-### Provide the Key: 
+### Provide the Key:
 The recommended way is to set the MOORCHEH_API_KEY environment variable:
 
 Linux/macOS/Git Bash:
@@ -56,7 +56,7 @@ set MOORCHEH_API_KEY=YOUR_API_KEY_HERE
 ```
 The client will automatically read this environment variable upon initialization.
 
-Alternatively, you can pass the key directly to the constructor (MoorchehClient(api_key="...")), but using environment variables is generally preferred for security. 
+Alternatively, you can pass the key directly to the constructor (MoorchehClient(api_key="...")), but using environment variables is generally preferred for security.
 
 ## Quick Start:
 This example demonstrates the basic usage after installing the SDK.
@@ -186,7 +186,7 @@ search(namespaces, query, top_k=10, threshold=None, kiosk_mode=False) - Handles 
 ```
 ### Generative AI Response
 ```python
-get_generative_answer(namespace, query, top_k=5, ...) 
+get_generative_answer(namespace, query, top_k=5, ...)
 - Gets a context-aware answer from an LLM.
 ```
 
