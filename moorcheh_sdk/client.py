@@ -2,7 +2,7 @@
 
 import logging  # Import the logging module
 import os
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -201,7 +201,7 @@ class MoorchehClient:
                         return {}
                     json_response = response.json()
                     logger.debug(f"Decoded JSON response: {json_response}")
-                    return json_response
+                    return cast(dict[str, Any], json_response)
                 except Exception as json_e:
                     # Log JSON decoding errors at WARNING level, as the status code was successful # noqa: E501
                     logger.warning(
@@ -348,7 +348,7 @@ class MoorchehClient:
                 "Vector dimension should not be provided for type 'text'."
             )
 
-        payload = {"namespace_name": namespace_name, "type": type}
+        payload: dict[str, Any] = {"namespace_name": namespace_name, "type": type}
         # Only include vector_dimension if type is 'vector'
         if type == "vector":
             payload["vector_dimension"] = vector_dimension
@@ -362,7 +362,9 @@ class MoorchehClient:
         if not isinstance(response_data, dict):
             # This case should ideally be caught by _request's JSON decoding, but check defensively # noqa: E501
             logger.error("Create namespace response was not a dictionary as expected.")
-            raise APIError("Unexpected response format after creating namespace.")
+            raise APIError(
+                message="Unexpected response format after creating namespace."
+            )
 
         logger.info(
             f"Successfully created namespace '{namespace_name}'. Response:"
