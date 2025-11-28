@@ -17,7 +17,7 @@ cd moorcheh-python-sdk
 poetry install --with dev
 ```
 4. Create a Branch: Create a new branch for your changes. Use a descriptive name (e.g., fix/issue-123, feat/add-graph-endpoint).
-```bash 
+```bash
 git checkout -b your-branch-name
 ```
 # Making Changes
