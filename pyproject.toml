@@ -1,6 +1,6 @@
 [project]
 name = "moorcheh-sdk"
-version = "1.2.2"
+dynamic = ["version"]
 description = "Python SDK for the Moorcheh Semantic Search API"
 authors = [{ name = "Majid Fekri majid.fekri@edgeaiinnovations.com" }]
 requires-python = ">=3.10,<4"
@@ -32,8 +32,14 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "moorcheh_sdk/_version.py"
 
 # Optional: Configure MyPy
 [tool.mypy]

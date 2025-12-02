@@ -3,15 +3,12 @@ name: Publish
 on:
   release:
     types: [published]
-  workflow_dispatch:
 
 jobs:
   publish:
     name: Publish to PyPI
-    # Only run on releases starting with 'v' or manual dispatch
-    if: >-
-      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'v')) ||
-      github.event_name == 'workflow_dispatch'
+    # Only run on releases starting with 'v'
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

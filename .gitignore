@@ -148,3 +148,6 @@ cython_debug/
 Thumbs.db
 
 uv.lock
+
+# Generated version file
+moorcheh_sdk/_version.py
