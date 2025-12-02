@@ -25,6 +25,7 @@ if not logger.hasHandlers():
 
 # Default base URL for the production API
 DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1"  # Your confirmed endpoint
+INVALID_ID_CHARS = [" "]
 
 
 class MoorchehClient:
@@ -530,8 +531,11 @@ class MoorchehClient:
                 )
             if "id" not in doc or not doc["id"]:
                 raise InvalidInputError(
-                    f"Item at index {i} in 'documents' is missing required key 'id' or"
-                    " it is empty."
+                    f"Item at index {i} in 'documents' is missing required key 'id' or it is empty."
+                )
+            if any(char in doc["id"] for char in INVALID_ID_CHARS):
+                raise InvalidInputError(
+                    f"Item at index {i} in 'documents' has an invalid ID. Invalid characters: {INVALID_ID_CHARS!r}"
                 )
             if (
                 "text" not in doc
@@ -539,8 +543,7 @@ class MoorchehClient:
                 or not doc["text"].strip()
             ):
                 raise InvalidInputError(
-                    f"Item at index {i} in 'documents' is missing required key 'text'"
-                    " or it is not a non-empty string."
+                    f"Item at index {i} in 'documents' is missing required key 'text' or it is not a non-empty string."
                 )
 
         endpoint = f"/namespaces/{namespace_name}/documents"
