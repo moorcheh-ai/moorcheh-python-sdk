@@ -24,8 +24,8 @@ if not logger.hasHandlers():
     logger.addHandler(logging.NullHandler())
 
 # Default base URL for the production API
-DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1" # Your confirmed endpoint
-INVALID_ID_CHARS = [" ",]
+DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1"  # Your confirmed endpoint
+INVALID_ID_CHARS = [" "]
 
 
 class MoorchehClient:
@@ -526,13 +526,25 @@ class MoorchehClient:
 
         for i, doc in enumerate(documents):
             if not isinstance(doc, dict):
-                raise InvalidInputError(f"Item at index {i} in 'documents' is not a dictionary.")
-            if 'id' not in doc or not doc['id']:
-                 raise InvalidInputError(f"Item at index {i} in 'documents' is missing required key 'id' or it is empty.")
-            if any(char in doc['id'] for char in INVALID_ID_CHARS):
-                 raise InvalidInputError(f"Item at index {i} in 'documents' has an invalid ID. Invalid characters: {INVALID_ID_CHARS!r}")
-            if 'text' not in doc or not isinstance(doc['text'], str) or not doc['text'].strip():
-                 raise InvalidInputError(f"Item at index {i} in 'documents' is missing required key 'text' or it is not a non-empty string.")
+                raise InvalidInputError(
+                    f"Item at index {i} in 'documents' is not a dictionary."
+                )
+            if "id" not in doc or not doc["id"]:
+                raise InvalidInputError(
+                    f"Item at index {i} in 'documents' is missing required key 'id' or it is empty."
+                )
+            if any(char in doc["id"] for char in INVALID_ID_CHARS):
+                raise InvalidInputError(
+                    f"Item at index {i} in 'documents' has an invalid ID. Invalid characters: {INVALID_ID_CHARS!r}"
+                )
+            if (
+                "text" not in doc
+                or not isinstance(doc["text"], str)
+                or not doc["text"].strip()
+            ):
+                raise InvalidInputError(
+                    f"Item at index {i} in 'documents' is missing required key 'text' or it is not a non-empty string."
+                )
 
         endpoint = f"/namespaces/{namespace_name}/documents"
         payload = {"documents": documents}
