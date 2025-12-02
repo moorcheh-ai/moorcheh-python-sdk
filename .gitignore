@@ -146,3 +146,8 @@ cython_debug/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+uv.lock
+
+# Generated version file
+moorcheh_sdk/_version.py

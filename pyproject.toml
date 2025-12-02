@@ -1,33 +1,45 @@
-[tool.poetry]
+[project]
 name = "moorcheh-sdk"
-version = "1.2.2"
+dynamic = ["version"]
 description = "Python SDK for the Moorcheh Semantic Search API"
-authors = ["Majid Fekri majid.fekri@edgeaiinnovations.com"]
+authors = [{ name = "Majid Fekri majid.fekri@edgeaiinnovations.com" }]
+requires-python = ">=3.10,<4"
 readme = "README.md"
-license = "MIT" # Or your chosen license
-repository = "https://github.com/moorcheh-ai/moorcheh-python-sdk" 
-homepage = "https://www.moorcheh.ai" 
-keywords = ["moorcheh", "semantic search", "vector search", "ai", "sdk"]
+license = "MIT"
+keywords = [
+    "moorcheh",
+    "semantic search",
+    "vector search",
+    "ai",
+    "sdk",
+]
+dependencies = ["httpx>=0.28.1,<0.29"]
 
-[tool.poetry.dependencies]
-# --- UPDATE THIS LINE ---
-python = "^3.10" # Require Python 3.10 or newer
-# ------------------------
-httpx = "^0.28.1" # HTTP client (supports sync/async)
-# Add other core dependencies here if needed later
+[project.urls]
+Homepage = "https://www.moorcheh.ai"
+Repository = "https://github.com/moorcheh-ai/moorcheh-python-sdk"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.2.0"         # Testing framework
-pytest-mock = "^3.12.0"  # For mocking objects in tests (replaces pytest-httpx based on current tests)
-numpy = "^1.26.4"       # For benchmark script (adjust version as needed, ^1.26 or ^2.0)
-mypy = "^1.10.0"        # Static type checker
-build = "^1.2.2.post1"
-twine = "^6.1.0"
-
+[dependency-groups]
+dev = [
+    "pytest>=8.2.0,<9",
+    "pytest-mock>=3.12.0,<4",
+    "numpy>=1.26.4,<2",
+    "mypy>=1.10.0,<2",
+    "build>=1.2.2.post1,<2",
+    "twine>=6.1.0,<7",
+    "pre-commit>=4.4.0,<5",
+    "ruff>=0.14.6,<0.15",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "moorcheh_sdk/_version.py"
 
 # Optional: Configure MyPy
 [tool.mypy]
@@ -44,4 +56,26 @@ minversion = "6.0"
 addopts = "-ra -q"
 testpaths = [
     "tests",
+]
+
+# Optional: Configure Ruff
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    "W191",  # indentation contains tabs
 ]
