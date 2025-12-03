@@ -210,7 +210,7 @@ get_umap_image(namespace_name, n_dimensions=2) - Not yet implemented
 (Refer to method docstrings or full documentation for detailed parameters and return types.)
 
 ## Documentation
-Full API reference and further examples can be found at: [https://console.moorcheh.ai/docs](https://console.moorcheh.ai/docs)
+Full API reference and further examples can be found at: [https://docs.moorcheh.ai/](https://docs.moorcheh.ai/)
 
 ## Contributing
 Contributions are welcome! Please refer to the contributing guidelines (CONTRIBUTING.md) for details on setting up the development environment, running tests, and submitting pull requests.
