@@ -1,5 +1,3 @@
-# tests/conftest.py
-
 import os
 from unittest.mock import patch  # Use unittest.mock for patching os.environ
 
@@ -7,73 +5,98 @@ import httpx
 import pytest
 
 from moorcheh_sdk import MoorchehClient
-
-# --- Constants (can also be defined here if shared) ---
-DUMMY_API_KEY = "test_api_key_123"
-DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1"
+from tests.constants import DUMMY_API_KEY
 
 # --- Shared Fixtures ---
 
 
-@pytest.fixture(scope="function")  # Default scope, explicitly stated for clarity
+@pytest.fixture(scope="function")
 def mock_httpx_client(mocker):
-    """
-    Fixture to mock the internal httpx.Client used by MoorchehClient.
-    Mocks the client instance and its 'request' and 'close' methods.
-    """
-    # Mock the httpx.Client class itself
-    mock_client_class = mocker.patch("httpx.Client", autospec=True)
-
-    # Configure the instance returned when httpx.Client() is called
-    mock_instance = mock_client_class.return_value
-    mock_instance.request = mocker.MagicMock(spec=httpx.Client.request)
-    mock_instance.close = mocker.MagicMock(spec=httpx.Client.close)
-
-    # Return the *mock instance* so tests can configure its behavior (e.g., request return value) # noqa: E501
-    # Although mocker provides access via mock_client_class.return_value, returning it explicitly can be clearer # noqa: E501
-    return mock_instance
+    """Fixture to mock the internal httpx.Client."""
+    # Mock the httpx.Client instance created within MoorchehClient.__init__
+    mock_client_instance = mocker.MagicMock(spec=httpx.Client)
+    # Mock the request method on the instance
+    mock_client_instance.request = mocker.MagicMock()
+    # Mock the close method
+    mock_client_instance.close = mocker.MagicMock()
+    # Patch httpx.Client to return our mock instance when called
+    mocker.patch("httpx.Client", return_value=mock_client_instance)
+    return mock_client_instance
 
 
 @pytest.fixture(scope="function")
 def client(mock_httpx_client):
-    """
-    Fixture to provide a MoorchehClient instance for testing.
-    Initializes the client with a dummy API key and uses the mocked httpx client.
-    Uses a context manager to ensure cleanup logic (__exit__) is triggered.
-    """
+    """Fixture to provide a MoorchehClient instance with a mocked httpx client."""
     # Ensure the environment variable isn't interfering if not passed directly
-    # Use patch.dict from unittest.mock for environment manipulation
     with patch.dict(os.environ, {}, clear=True):
-        # Use the client's context manager to ensure __exit__ (and thus close) is handled # noqa: E501
-        with MoorchehClient(api_key=DUMMY_API_KEY) as client_instance:
-            # The mock_httpx_client fixture already patched httpx.Client,
-            # so this MoorchehClient will use the mock internally.
-            # We can attach the mock instance to the client instance for easier access in tests if needed,  # noqa: E501
-            # though accessing mock_httpx_client directly in the test function is standard. # noqa: E501
-            client_instance._mock_httpx_instance = mock_httpx_client
-            yield client_instance  # Provide the initialized client to the test
-
-    # No explicit cleanup needed here, the context manager handles client.close(),
-    # which calls mock_httpx_client.close()
+        # Use context manager to ensure close is called if needed, though we mock it
+        with MoorchehClient(api_key=DUMMY_API_KEY) as instance:
+            # Attach the mock client instance for easier access in tests
+            instance._mock_httpx_instance = mock_httpx_client
+            yield instance  # Provide the instance to the test
+    # __exit__ will call close on the client, which calls close on the mock
 
 
 @pytest.fixture(scope="function")
 def client_no_env_key():
-    """
-    Fixture to set up the environment for testing client initialization
-    when no API key is provided via constructor or environment variable.
-    """
+    """Fixture to test client initialization without API key."""
     # Ensure MOORCHEH_API_KEY is not set in the environment for this test
     with patch.dict(os.environ, {}, clear=True):
-        yield  # Allow the test that uses this fixture to run
+        yield  # Allow the test to run
+    # Environment is restored automatically after 'yield'
 
-    # Environment is automatically restored after 'yield' by patch.dict context manager
 
+@pytest.fixture
+def mock_response(mocker):
+    """Helper to create a mock httpx.Response."""
 
-# --- Helper Functions (Optional - can also go here if shared) ---
-# Example: If mock_response was needed in multiple test files, move it here.
-# from unittest.mock import MagicMock
-# def mock_response(mocker, status_code, json_data=None, text_data=None, content_type="application/json", headers=None): # noqa: E501
-#     """Helper to create a mock httpx.Response."""
-#     # ... (implementation from test_client.py) ...
-#     pass
+    def _mock_response(
+        status_code,
+        json_data=None,
+        text_data=None,
+        content_type="application/json",
+        headers=None,
+    ):
+        response = mocker.MagicMock(spec=httpx.Response)
+        response.status_code = status_code
+        response.headers = headers or {"content-type": content_type}
+        if json_data is not None:
+            response.json.return_value = json_data
+            # Simulate empty content if json_data is empty dict/list
+            response.content = (
+                b"{}"
+                if isinstance(json_data, dict) and not json_data
+                else (
+                    b"[]"
+                    if isinstance(json_data, list) and not json_data
+                    else b'{"data": "dummy"}'
+                )
+            )
+        else:
+            response.json.side_effect = Exception(
+                "Cannot decode JSON"
+            )  # Make sure .json() fails if no JSON
+            response.content = b""  # Default empty content
+
+        response.text = (
+            text_data if text_data is not None else str(json_data) if json_data else ""
+        )
+        if response.content == b"" and response.text:
+            response.content = response.text.encode("utf-8")
+
+        # Mock raise_for_status to raise appropriate error only if status >= 400
+        def raise_for_status_side_effect(*args, **kwargs):
+            if status_code >= 400:
+                raise httpx.HTTPStatusError(
+                    message=f"Mock Error {status_code}",
+                    request=mocker.MagicMock(),
+                    response=response,
+                )
+
+        response.raise_for_status = mocker.MagicMock(
+            side_effect=raise_for_status_side_effect
+        )
+
+        return response
+
+    return _mock_response

@@ -1,0 +1,10 @@
+DUMMY_API_KEY = "test_api_key_123"
+DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1"
+TEST_NAMESPACE = "test-namespace"
+TEST_NAMESPACE_2 = "another-namespace"
+TEST_VECTOR_DIM = 10
+TEST_DOC_ID_1 = "doc-abc"
+TEST_DOC_ID_2 = 123
+TEST_VEC_ID_1 = "vec-xyz"
+TEST_VEC_ID_2 = 456
+SDK_VERSION = "1.1.0"

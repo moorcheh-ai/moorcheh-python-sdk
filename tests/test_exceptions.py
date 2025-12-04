@@ -1,5 +1,3 @@
-# tests/test_exceptions.py
-
 from moorcheh_sdk.exceptions import (
     APIError,
     AuthenticationError,
