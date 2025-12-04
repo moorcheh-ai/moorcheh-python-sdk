@@ -19,44 +19,40 @@ class Answer(BaseResource):
         temperature: float = 0.7,
     ) -> JSON:
         """
-        Submits a query to a namespace and gets a generative AI answer.
+        Generates an AI answer based on a search query within a namespace.
 
-        This endpoint performs a search, gathers the context, and sends it to a
-        Large Language Model (LLM) to generate a conversational answer.
+        This method performs a semantic search to retrieve relevant context and then
+        uses a Large Language Model (LLM) to generate a conversational response.
 
         Args:
-            namespace: The single text-based namespace to search within.
-            query: The user's question or prompt as a string.
-            top_k: The number of search results to provide as context to the LLM
-                (default: 5). Must be a positive integer.
-            ai_model: The identifier for the LLM to use for generation
-                (default: "anthropic.claude-v2:1").
-            chat_history: An optional list of previous conversation turns to maintain
-                context. Each item should be a dictionary. Defaults to None.
-            temperature: The sampling temperature for the LLM, between 0 and 1.
-                Higher values mean more randomness (default: 0.7).
+            namespace: The name of the text-based namespace to search within.
+            query: The question or prompt to answer.
+            top_k: The number of search results to use as context. Defaults to 5.
+            ai_model: The identifier of the LLM to use.
+                Defaults to "anthropic.claude-sonnet-4-20250514-v1:0".
+            chat_history: Optional list of previous conversation turns for context.
+                Each item should be a dictionary. Defaults to None.
+            temperature: The sampling temperature for the LLM (0.0 to 1.0).
+                Higher values introduce more randomness. Defaults to 0.7.
 
         Returns:
-            A dictionary containing the AI-generated answer and other metadata.
-            Example:
-            ```json
+            A dictionary containing the generated answer and metadata.
+
+            Structure:
             {
-              "answer": "AI-generated response text",
-              "model": "anthropic.claude-v2:1",
-              "contextCount": 3,
-              "query": "your question here"
+                "answer": str,
+                "model": str,
+                "contextCount": int,
+                "query": str
             }
-            ```
 
         Raises:
-            InvalidInputError: If `namespace` or `query` is invalid, or if other
-                parameters are of the wrong type or out of range. Also raised
-                for API 400 errors.
-            NamespaceNotFound: If the specified `namespace` does not exist
-                (API 404 error).
-            AuthenticationError: If the API key is invalid or lacks permissions.
-            APIError: For other unexpected API errors during the request.
-            MoorchehError: For network issues or client-side request problems.
+            InvalidInputError: If parameters are invalid (e.g., empty strings,
+                negative numbers) or if the API returns a 400 Bad Request.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors (e.g., 500).
+            MoorchehError: For network or connection issues.
         """
         logger.info(
             "Attempting to get generative answer for query in namespace"

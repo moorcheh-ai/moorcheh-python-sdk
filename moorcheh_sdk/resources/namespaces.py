@@ -13,33 +13,30 @@ class Namespaces(BaseResource):
         self, namespace_name: str, type: str, vector_dimension: int | None = None
     ) -> JSON:
         """
-        Creates a new namespace for storing data.
-
-        Namespaces isolate data and configurations. Choose 'text' for storing raw text
-        that Moorcheh will embed, or 'vector' for storing pre-computed vectors.
+        Creates a new namespace.
 
         Args:
-            namespace_name: A unique name for the namespace (string). Must adhere
-                to naming conventions (e.g., alphanumeric, hyphens).
-            type: The type of namespace, either "text" or "vector".
-            vector_dimension: The dimension of vectors that will be stored.
-                Required only if `type` is "vector". Must be a positive integer.
+            namespace_name: A unique name for the namespace.
+            type: The type of namespace ("text" or "vector").
+            vector_dimension: The dimension of vectors (required if type="vector").
 
         Returns:
-            A dictionary containing the API response upon successful creation,
-            typically confirming the namespace details.
-            Example: `{'message': 'Namespace created successfully', 'namespace_name': 'my-text-ns', 'type': 'text'}`
+            A dictionary containing the created namespace details.
+
+            Structure:
+            {
+                "message": str,
+                "namespace_name": str,
+                "type": str,
+                "vector_dimension": int | None
+            }
 
         Raises:
-            InvalidInputError: If `namespace_name` is invalid, `type` is not
-                'text' or 'vector', `vector_dimension` is missing or invalid
-                for type 'vector', or `vector_dimension` is provided for type 'text'.
-                Also raised for API 400 errors.
-            ConflictError: If a namespace with the given `namespace_name` already
-                exists (API 409 error).
-            AuthenticationError: If the API key is invalid or lacks permissions.
-            APIError: For other unexpected API errors during creation.
-            MoorchehError: For network issues or client-side request problems.
+            InvalidInputError: If input validation fails or API returns 400.
+            ConflictError: If the namespace already exists (409).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
         """
         logger.info(
             f"Attempting to create namespace '{namespace_name}' of type '{type}'..."
@@ -84,23 +81,17 @@ class Namespaces(BaseResource):
 
     def delete(self, namespace_name: str) -> None:
         """
-        Deletes a namespace and all its associated data permanently.
-
-        Warning: This operation is irreversible.
+        Deletes a namespace and all its data.
 
         Args:
-            namespace_name: The exact name of the namespace to delete.
-
-        Returns:
-            None. A successful deletion is indicated by the absence of an exception.
+            namespace_name: The name of the namespace to delete.
 
         Raises:
-            InvalidInputError: If `namespace_name` is empty or not a string.
-            NamespaceNotFound: If no namespace with the given `namespace_name` exists
-                (API 404 error).
-            AuthenticationError: If the API key is invalid or lacks permissions.
-            APIError: For other unexpected API errors during deletion.
-            MoorchehError: For network issues or client-side request problems.
+            InvalidInputError: If input is invalid.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
         """
         logger.info(f"Attempting to delete namespace '{namespace_name}'...")
         if not namespace_name or not isinstance(namespace_name, str):
@@ -114,40 +105,28 @@ class Namespaces(BaseResource):
 
     def list(self) -> JSON:
         """
-        Retrieves a list of all namespaces accessible by the current API key.
-
-        Returns information about each namespace, including its name, type,
-        item count, and vector dimension (if applicable).
+        Lists all available namespaces.
 
         Returns:
-            A dictionary containing the API response. The list of namespaces is
-            under the 'namespaces' key. Includes 'execution_time'.
-            Example:
-            ```json
+            A dictionary containing the list of namespaces.
+
+            Structure:
             {
-              "namespaces": [
-                {
-                  "namespace_name": "my-docs",
-                  "type": "text",
-                  "itemCount": 1250,
-                  "vector_dimension": null
-                },
-                {
-                  "namespace_name": "image-vectors",
-                  "type": "vector",
-                  "itemCount": 5000,
-                  "vector_dimension": 512
-                }
-              ],
-              "execution_time": 0.045
+                "namespaces": [
+                    {
+                        "namespace_name": str,
+                        "type": "text" | "vector",
+                        "itemCount": int,
+                        "vector_dimension": int | None
+                    }
+                ],
+                "execution_time": float
             }
-            ```
 
         Raises:
-            AuthenticationError: If the API key is invalid or lacks permissions.
-            APIError: If the API returns an error or an unexpected response format
-                      (e.g., missing 'namespaces' key).
-            MoorchehError: For network issues or client-side request problems.
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
         """
         logger.info("Attempting to list namespaces...")
         response_data = self._client._request("GET", "/namespaces", expected_status=200)
