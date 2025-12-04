@@ -1,10 +1,10 @@
-import logging
 from typing import Any
 
 from ..exceptions import APIError, InvalidInputError
+from ..utils.logging import setup_logging
 from .base import BaseResource
 
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 
 class Namespaces(BaseResource):

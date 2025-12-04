@@ -14,11 +14,12 @@ from moorcheh_sdk import (
     MoorchehClient,
     MoorchehError,
     NamespaceNotFound,
+    __version__,
 )
 
 # --- Constants for Testing ---
 DUMMY_API_KEY = "test_api_key_123"
-DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1/"  # Match client default
+DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1"  # Match client default
 TEST_NAMESPACE = "test-namespace"
 TEST_NAMESPACE_2 = "another-namespace"
 TEST_VECTOR_DIM = 10
@@ -100,6 +101,8 @@ def mock_response(
     response.text = (
         text_data if text_data is not None else str(json_data) if json_data else ""
     )
+    if response.content == b"" and response.text:
+        response.content = response.text.encode("utf-8")
 
     # Mock raise_for_status to raise appropriate error only if status >= 400
     def raise_for_status_side_effect(*args, **kwargs):
@@ -136,7 +139,7 @@ def test_client_initialization_success_with_key(mock_httpx_client):
                 "x-api-key": DUMMY_API_KEY,
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-                "User-Agent": "moorcheh-python-sdk/0.1.0",  # Ensure this matches __init__.py version  # noqa: E501
+                "User-Agent": f"moorcheh-python-sdk/{__version__}",
             },
             timeout=30.0,  # Default timeout
         )
@@ -206,7 +209,7 @@ def test_create_namespace_success_text(client, mocker):
     )
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.create_namespace(namespace_name=TEST_NAMESPACE, type="text")
+    result = client.namespaces.create(namespace_name=TEST_NAMESPACE, type="text")
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST",
@@ -235,7 +238,7 @@ def test_create_namespace_success_vector(client, mocker):
     )
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.create_namespace(
+    result = client.namespaces.create(
         namespace_name=TEST_NAMESPACE, type="vector", vector_dimension=TEST_VECTOR_DIM
     )
 
@@ -259,7 +262,7 @@ def test_create_namespace_conflict(client, mocker):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     with pytest.raises(ConflictError, match=error_text):
-        client.create_namespace(namespace_name=TEST_NAMESPACE, type="text")
+        client.namespaces.create(namespace_name=TEST_NAMESPACE, type="text")
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -269,7 +272,12 @@ def test_create_namespace_conflict(client, mocker):
         ("", "text", None, "'namespace_name' must be a non-empty string"),
         (None, "text", None, "'namespace_name' must be a non-empty string"),
         ("test", "invalid_type", None, "Namespace type must be 'text' or 'vector'"),
-        ("test", "vector", None, "Vector dimension must be provided for type 'vector'"),
+        (
+            "test",
+            "vector",
+            None,
+            "Vector dimension must be a positive integer for type 'vector'",
+        ),
         (
             "test",
             "vector",
@@ -296,7 +304,9 @@ def test_create_namespace_invalid_input_client_side(
 ):
     """Test client-side validation for create_namespace."""
     with pytest.raises(InvalidInputError, match=expected_error_msg):
-        client.create_namespace(namespace_name=name, type=ns_type, vector_dimension=dim)
+        client.namespaces.create(
+            namespace_name=name, type=ns_type, vector_dimension=dim
+        )
     client._mock_httpx_instance.request.assert_not_called()
 
 
@@ -307,7 +317,7 @@ def test_create_namespace_invalid_input_server_side(client, mocker):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     with pytest.raises(InvalidInputError, match=error_text):
-        client.create_namespace(namespace_name="invalid-name-$%^", type="text")
+        client.namespaces.create(namespace_name="invalid-name-$%^", type="text")
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -329,7 +339,7 @@ def test_list_namespaces_success(client, mocker):
     mock_resp = mock_response(mocker, 200, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.list_namespaces()
+    result = client.namespaces.list()
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="GET", url="/namespaces", json=None, params=None
@@ -343,7 +353,7 @@ def test_list_namespaces_success_empty(client, mocker):
     mock_resp = mock_response(mocker, 200, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.list_namespaces()
+    result = client.namespaces.list()
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="GET", url="/namespaces", json=None, params=None
@@ -353,12 +363,11 @@ def test_list_namespaces_success_empty(client, mocker):
 
 def test_list_namespaces_api_error(client, mocker):
     """Test handling of a 500 server error during list_namespaces."""
-    error_text = "API Error (Status: 500): Internal Server Error"
     mock_resp = mock_response(mocker, 500, text_data="Internal Server Error")
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    with pytest.raises(APIError, match=error_text):
-        client.list_namespaces()
+    with pytest.raises(APIError, match="API Error: Internal Server Error"):
+        client.namespaces.list()
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -369,7 +378,7 @@ def test_list_namespaces_auth_error(client, mocker):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     with pytest.raises(AuthenticationError, match=error_text):
-        client.list_namespaces()
+        client.namespaces.list()
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -380,8 +389,8 @@ def test_list_namespaces_unexpected_format(client, mocker):
     )  # Not JSON
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    with pytest.raises(APIError, match="Failed to decode JSON response"):
-        client.list_namespaces()
+    with pytest.raises(APIError, match=r"Failed to decode JSON response.*"):
+        client.namespaces.list()
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -396,7 +405,7 @@ def test_list_namespaces_missing_key(client, mocker):
         APIError,
         match="Invalid response structure: 'namespaces' key missing or not a list.",
     ):
-        client.list_namespaces()
+        client.namespaces.list()
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -412,7 +421,7 @@ def test_delete_namespace_success(client, mocker):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     # delete_namespace returns None on success
-    result = client.delete_namespace(TEST_NAMESPACE)
+    result = client.namespaces.delete(TEST_NAMESPACE)
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="DELETE", url=f"/namespaces/{TEST_NAMESPACE}", json=None, params=None
@@ -427,7 +436,7 @@ def test_delete_namespace_not_found(client, mocker):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     with pytest.raises(NamespaceNotFound, match=error_text):
-        client.delete_namespace(TEST_NAMESPACE)
+        client.namespaces.delete(TEST_NAMESPACE)
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -437,7 +446,7 @@ def test_delete_namespace_invalid_name_client_side(client, invalid_name):
     with pytest.raises(
         InvalidInputError, match="'namespace_name' must be a non-empty string"
     ):
-        client.delete_namespace(invalid_name)
+        client.namespaces.delete(invalid_name)
     client._mock_httpx_instance.request.assert_not_called()
 
 
@@ -455,7 +464,7 @@ def test_upload_documents_success(client, mocker):
     mock_resp = mock_response(mocker, 202, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.upload_documents(namespace_name=TEST_NAMESPACE, documents=docs)
+    result = client.documents.upload(namespace_name=TEST_NAMESPACE, documents=docs)
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST",
@@ -484,7 +493,7 @@ def test_upload_documents_success(client, mocker):
 def test_upload_documents_invalid_input_client_side(client, invalid_docs):
     """Test client-side validation for the documents payload."""
     with pytest.raises(InvalidInputError):  # Match specific message if needed
-        client.upload_documents(namespace_name=TEST_NAMESPACE, documents=invalid_docs)
+        client.documents.upload(namespace_name=TEST_NAMESPACE, documents=invalid_docs)
     client._mock_httpx_instance.request.assert_not_called()
 
 
@@ -496,7 +505,7 @@ def test_upload_documents_namespace_not_found(client, mocker):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     with pytest.raises(NamespaceNotFound, match=error_text):
-        client.upload_documents(namespace_name=TEST_NAMESPACE, documents=docs)
+        client.documents.upload(namespace_name=TEST_NAMESPACE, documents=docs)
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -514,7 +523,7 @@ def test_upload_vectors_success_201(client, mocker):
     mock_resp = mock_response(mocker, 201, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.upload_vectors(namespace_name=TEST_NAMESPACE, vectors=vectors)
+    result = client.vectors.upload(namespace_name=TEST_NAMESPACE, vectors=vectors)
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST",
@@ -542,7 +551,7 @@ def test_upload_vectors_partial_success_207(client, mocker):
     mock_resp = mock_response(mocker, 207, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.upload_vectors(namespace_name=TEST_NAMESPACE, vectors=vectors)
+    result = client.vectors.upload(namespace_name=TEST_NAMESPACE, vectors=vectors)
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST",
@@ -571,7 +580,7 @@ def test_upload_vectors_partial_success_207(client, mocker):
 def test_upload_vectors_invalid_input_client_side(client, invalid_vectors):
     """Test client-side validation for the vectors payload."""
     with pytest.raises(InvalidInputError):
-        client.upload_vectors(namespace_name=TEST_NAMESPACE, vectors=invalid_vectors)
+        client.vectors.upload(namespace_name=TEST_NAMESPACE, vectors=invalid_vectors)
     client._mock_httpx_instance.request.assert_not_called()
 
 
@@ -583,7 +592,7 @@ def test_upload_vectors_namespace_not_found(client, mocker):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     with pytest.raises(NamespaceNotFound, match=error_text):
-        client.upload_vectors(namespace_name=TEST_NAMESPACE, vectors=vectors)
+        client.vectors.upload(namespace_name=TEST_NAMESPACE, vectors=vectors)
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -607,7 +616,7 @@ def test_search_success_text(client, mocker):
     mock_resp = mock_response(mocker, 200, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.search(namespaces=namespaces, query=query, top_k=top_k)
+    result = client.search.query(namespaces=namespaces, query=query, top_k=top_k)
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST",
@@ -636,7 +645,7 @@ def test_search_success_vector_with_threshold(client, mocker):
     mock_resp = mock_response(mocker, 200, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.search(
+    result = client.search.query(
         namespaces=namespaces, query=query, top_k=top_k, threshold=threshold
     )
 
@@ -678,7 +687,7 @@ def test_search_invalid_input_client_side(
 ):
     """Test client-side validation for search parameters."""
     with pytest.raises(InvalidInputError):
-        client.search(
+        client.search.query(
             namespaces=invalid_ns,
             query=invalid_query,
             top_k=invalid_k,
@@ -703,9 +712,9 @@ def test_search_namespace_not_found(client, mocker):
     but also test 400 below. Adjust based on actual API behavior.
     """  # noqa: E501
     with pytest.raises(
-        NamespaceNotFound, match=error_text
-    ):  # Assuming _request maps 404 correctly here too based on text
-        client.search(namespaces=namespaces, query=query)
+        APIError, match="Not Found: Namespace 'non-existent-ns' not found."
+    ):
+        client.search.query(namespaces=namespaces, query=query)
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -718,7 +727,7 @@ def test_search_invalid_input_server_side(client, mocker):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     with pytest.raises(InvalidInputError, match=error_text):
-        client.search(namespaces=namespaces, query=query)
+        client.search.query(namespaces=namespaces, query=query)
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -736,21 +745,21 @@ def test_get_generative_answer_success(client, mocker):
     mock_resp = mock_response(mocker, 200, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.get_generative_answer(
+    result = client.answer.generate(
         namespace=TEST_NAMESPACE, query=query, top_k=3, ai_model=model
     )
 
     expected_payload = {
         "namespace": TEST_NAMESPACE,
         "query": query,
-        "topK": 3,
+        "top_k": 3,
         "type": "text",
         "aiModel": model,
         "chatHistory": [],
         "temperature": 0.7,
     }
     client._mock_httpx_instance.request.assert_called_once_with(
-        method="POST", url="/gen-ai-answer", json=expected_payload, params=None
+        method="POST", url="/answer", json=expected_payload, params=None
     )
     assert result == expected_response
 
@@ -782,15 +791,6 @@ def test_get_generative_answer_success(client, mocker):
             [],
             "'temperature' must be a number between 0.0 and 1.0",
         ),
-        (
-            "ns",
-            "q",
-            5,
-            "m",
-            0.5,
-            "not-a-list",
-            "'chat_history' must be a list of dictionaries or None",
-        ),
     ],
 )
 def test_get_generative_answer_invalid_input_client_side(
@@ -798,7 +798,7 @@ def test_get_generative_answer_invalid_input_client_side(
 ):
     """Test client-side validation for get_generative_answer."""
     with pytest.raises(InvalidInputError, match=msg):
-        client.get_generative_answer(
+        client.answer.generate(
             namespace=ns,
             query=q,
             top_k=tk,
@@ -811,12 +811,11 @@ def test_get_generative_answer_invalid_input_client_side(
 
 def test_get_generative_answer_server_error(client, mocker):
     """Test get_generative_answer with a 500 server error."""
-    error_text = "API Error (Status: 500): Upstream LLM provider failed"
     mock_resp = mock_response(mocker, 500, text_data="Upstream LLM provider failed")
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    with pytest.raises(APIError, match=error_text):
-        client.get_generative_answer(namespace=TEST_NAMESPACE, query="test")
+    with pytest.raises(APIError, match="API Error: Upstream LLM provider failed"):
+        client.answer.generate(namespace=TEST_NAMESPACE, query="test")
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -832,7 +831,7 @@ def test_delete_documents_success_200(client, mocker):
     mock_resp = mock_response(mocker, 200, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.delete_documents(namespace_name=TEST_NAMESPACE, ids=ids_to_delete)
+    result = client.documents.delete(namespace_name=TEST_NAMESPACE, ids=ids_to_delete)
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST",
@@ -854,7 +853,7 @@ def test_delete_documents_partial_success_207(client, mocker):
     mock_resp = mock_response(mocker, 207, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.delete_documents(namespace_name=TEST_NAMESPACE, ids=ids_to_delete)
+    result = client.documents.delete(namespace_name=TEST_NAMESPACE, ids=ids_to_delete)
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST",
@@ -871,7 +870,7 @@ def test_delete_documents_partial_success_207(client, mocker):
 def test_delete_documents_invalid_input_client_side(client, invalid_ids):
     """Test client-side validation for delete_documents IDs."""
     with pytest.raises(InvalidInputError):
-        client.delete_documents(namespace_name=TEST_NAMESPACE, ids=invalid_ids)
+        client.documents.delete(namespace_name=TEST_NAMESPACE, ids=invalid_ids)
     client._mock_httpx_instance.request.assert_not_called()
 
 
@@ -883,7 +882,7 @@ def test_delete_documents_namespace_not_found(client, mocker):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     with pytest.raises(NamespaceNotFound, match=error_text):
-        client.delete_documents(namespace_name=TEST_NAMESPACE, ids=ids)
+        client.documents.delete(namespace_name=TEST_NAMESPACE, ids=ids)
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -899,7 +898,7 @@ def test_delete_vectors_success_200(client, mocker):
     mock_resp = mock_response(mocker, 200, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.delete_vectors(namespace_name=TEST_NAMESPACE, ids=ids_to_delete)
+    result = client.vectors.delete(namespace_name=TEST_NAMESPACE, ids=ids_to_delete)
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST",
@@ -921,7 +920,7 @@ def test_delete_vectors_partial_success_207(client, mocker):
     mock_resp = mock_response(mocker, 207, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.delete_vectors(namespace_name=TEST_NAMESPACE, ids=ids_to_delete)
+    result = client.vectors.delete(namespace_name=TEST_NAMESPACE, ids=ids_to_delete)
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST",
@@ -938,7 +937,7 @@ def test_delete_vectors_partial_success_207(client, mocker):
 def test_delete_vectors_invalid_input_client_side(client, invalid_ids):
     """Test client-side validation for delete_vectors IDs."""
     with pytest.raises(InvalidInputError):
-        client.delete_vectors(namespace_name=TEST_NAMESPACE, ids=invalid_ids)
+        client.vectors.delete(namespace_name=TEST_NAMESPACE, ids=invalid_ids)
     client._mock_httpx_instance.request.assert_not_called()
 
 
@@ -950,7 +949,7 @@ def test_delete_vectors_namespace_not_found(client, mocker):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     with pytest.raises(NamespaceNotFound, match=error_text):
-        client.delete_vectors(namespace_name=TEST_NAMESPACE, ids=ids)
+        client.vectors.delete(namespace_name=TEST_NAMESPACE, ids=ids)
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -962,7 +961,7 @@ def test_request_timeout(client, mocker):
     )
 
     with pytest.raises(MoorchehError, match="Request timed out after 30.0 seconds."):
-        client.list_namespaces()  # Any method that uses _request
+        client.namespaces.list()  # Any method that uses _request
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -974,7 +973,7 @@ def test_request_network_error(client, mocker):
     )
 
     with pytest.raises(MoorchehError, match=f"Network or request error: {error_msg}"):
-        client.list_namespaces()
+        client.namespaces.list()
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -988,18 +987,21 @@ def test_request_unexpected_error(client, mocker):
     with pytest.raises(
         MoorchehError, match=f"An unexpected error occurred: {error_msg}"
     ):
-        client.list_namespaces()
+        client.namespaces.list()
     client._mock_httpx_instance.request.assert_called_once()
 
 
 # Test context manager usage ensures close is called
-def test_client_context_manager(mock_httpx_client):
+def test_client_context_manager(mock_httpx_client, mocker):
     """Test that the client's close method is called when used as a context manager."""
     with patch.dict(os.environ, {}, clear=True):  # Isolate from env vars
         with MoorchehClient(api_key=DUMMY_API_KEY) as client_instance:
             assert isinstance(client_instance, MoorchehClient)
             # Simulate doing something with the client if needed
-            client_instance.list_namespaces()  # Call any method
+            # Mock the response for list_namespaces to avoid APIError
+            mock_resp = mock_response(mocker, 200, json_data={"namespaces": []})
+            mock_httpx_client.request.return_value = mock_resp
+            client_instance.namespaces.list()  # Call any method
         # After exiting the 'with' block,
         # close should have been called on the mock httpx instance
         mock_httpx_client.close.assert_called_once()

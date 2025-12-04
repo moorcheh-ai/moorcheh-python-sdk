@@ -1,7 +1,5 @@
-# moorcheh_sdk/__init__.py
-
-# Expose the client and exceptions at the package level for easier imports
-from .client import MoorchehClient
+from ._client import MoorchehClient
+from ._version import __version__
 from .exceptions import (
     APIError,
     AuthenticationError,
@@ -11,10 +9,6 @@ from .exceptions import (
     NamespaceNotFound,
 )
 
-# Define package version (can be read from pyproject.toml in more advanced setups)
-__version__ = "1.1.0"
-
-# Optionally define what 'from moorcheh_sdk import *' imports
 __all__ = [
     "MoorchehClient",
     "MoorchehError",
