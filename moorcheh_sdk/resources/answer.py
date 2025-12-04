@@ -1,6 +1,7 @@
 from typing import Any
 
 from ..exceptions import APIError, InvalidInputError
+from ..types import JSON
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -14,9 +15,9 @@ class Answer(BaseResource):
         query: str,
         top_k: int = 5,
         ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
-        chat_history: list[dict[str, Any]] | None = None,
+        chat_history: list[JSON] | None = None,
         temperature: float = 0.7,
-    ) -> dict[str, Any]:
+    ) -> JSON:
         """
         Submits a query to a namespace and gets a generative AI answer.
 

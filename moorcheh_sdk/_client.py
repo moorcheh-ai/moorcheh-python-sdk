@@ -1,4 +1,5 @@
 import os
+from functools import cached_property
 from typing import Any, cast
 
 import httpx
@@ -13,6 +14,7 @@ from .exceptions import (
     NamespaceNotFound,
 )
 from .resources import Answer, Documents, Namespaces, Search, Vectors
+from .types import Body, Query, Timeout
 from .utils.constants import DEFAULT_BASE_URL
 from .utils.logging import setup_logging
 
@@ -47,7 +49,7 @@ class MoorchehClient(SyncAPIClient):
         self,
         api_key: str | None = None,
         base_url: str | None = None,
-        timeout: float | None = 30.0,
+        timeout: Timeout = 30.0,
     ):
         """
         Initializes the MoorchehClient.
@@ -96,184 +98,176 @@ class MoorchehClient(SyncAPIClient):
             f" {sdk_version}"
         )
 
-        self.namespaces = Namespaces(self)
-        self.documents = Documents(self)
-        self.vectors = Vectors(self)
-        self.search = Search(self)
-        self.answer = Answer(self)
+    @cached_property
+    def namespaces(self) -> Namespaces:
+        return Namespaces(self)
+
+    @cached_property
+    def documents(self) -> Documents:
+        return Documents(self)
+
+    @cached_property
+    def vectors(self) -> Vectors:
+        return Vectors(self)
+
+    @cached_property
+    def search(self) -> Search:
+        return Search(self)
+
+    @cached_property
+    def answer(self) -> Answer:
+        return Answer(self)
 
     def _request(
         self,
         method: str,
         endpoint: str,
-        json_data: dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None,
+        json_data: Body | None = None,
+        params: Query | None = None,
         expected_status: int = 200,
         alt_success_status: int | None = None,
     ) -> dict[str, Any] | bytes | None:
         """
         Internal helper method to make HTTP requests to the Moorcheh API.
-
-        Handles request construction, sending, response validation, error mapping,
-        and basic logging. Not intended for direct use by SDK consumers.
-
-        Args:
-            method: HTTP method (e.g., "GET", "POST", "DELETE").
-            endpoint: API endpoint path (e.g., "/namespaces").
-            json_data: Dictionary to be sent as JSON payload in the request body.
-            params: Dictionary of URL query parameters.
-            expected_status: The primary expected HTTP status code for success (e.g., 200, 201).
-            alt_success_status: An alternative acceptable HTTP status code for success (e.g., 207).
-
-        Returns:
-            Decoded JSON response as a dictionary, raw bytes for binary content (e.g., images),
-            or None for responses with no content (e.g., 204).
-
-        Raises:
-            InvalidInputError: For 400 Bad Request errors from the API.
-            AuthenticationError: For 401 Unauthorized or 403 Forbidden errors.
-            NamespaceNotFound: For 404 Not Found errors specifically related to namespaces.
-            ConflictError: For 409 Conflict errors from the API.
-            APIError: For other 4xx/5xx HTTP errors or issues decoding a successful response.
-            MoorchehError: For client-side errors like network issues or timeouts.
-        """  # noqa: E501
+        """
         if not endpoint.startswith("/"):
             endpoint = "/" + endpoint
-        url = f"{self.base_url}{endpoint}"  # Full URL for logging clarity
-        # Log the request attempt at DEBUG level
-        logger.debug(
-            f"Making {method} request to {url} with payload: {json_data} and params:"
-            f" {params}"
-        )
 
         try:
-            response = self._client.request(
+            response = self.request(
                 method=method,
-                url=endpoint,  # httpx uses the relative path with base_url
+                path=endpoint,
                 json=json_data,
                 params=params,
             )
             logger.debug(f"Received response with status code: {response.status_code}")
 
-            is_expected_status = response.status_code == expected_status
-            is_alt_status = (
-                alt_success_status is not None
-                and response.status_code == alt_success_status
+            return self._process_response(
+                response, endpoint, expected_status, alt_success_status
             )
 
-            if is_expected_status or is_alt_status:
-                if response.status_code == 204:
-                    logger.info(
-                        f"Request to {endpoint} successful (Status: 204 No Content)"
-                    )
-                    return None
-
-                content_type = response.headers.get("content-type", "").lower()
-                if content_type == "image/png":
-                    logger.info(
-                        f"Request to {endpoint} successful (Status:"
-                        f" {response.status_code}, Content-Type: PNG)"
-                    )
-                    return response.content
-
-                try:
-                    logger.info(
-                        f"Request to {endpoint} successful (Status:"
-                        f" {response.status_code})"
-                    )
-                    if not response.content:
-                        logger.debug("Response content is empty, returning empty dict.")
-                        return {}
-                    json_response = response.json()
-                    logger.debug(f"Decoded JSON response: {json_response}")
-                    return cast(dict[str, Any], json_response)
-                except Exception as json_e:
-                    # Log JSON decoding errors at WARNING level, as the status code was successful # noqa: E501
-                    logger.warning(
-                        "Error decoding JSON response despite success status"
-                        f" {response.status_code} from {endpoint}: {json_e}",
-                        exc_info=True,
-                    )
-                    raise APIError(
-                        status_code=response.status_code,
-                        message=f"Failed to decode JSON response: {response.text}",
-                    ) from json_e
-
-            # Log error responses before raising exceptions
-            logger.warning(
-                f"Request to {endpoint} failed with status {response.status_code}."
-                f" Response text: {response.text}"
-            )
-
-            # Map HTTP error statuses to specific exceptions
-            if response.status_code == 400:
-                raise InvalidInputError(message=f"Bad Request: {response.text}")
-            elif response.status_code == 401 or response.status_code == 403:
-                raise AuthenticationError(
-                    message=f"Forbidden/Unauthorized: {response.text}"
-                )
-            elif response.status_code == 404:
-                # Try to extract namespace name for better error message if applicable
-                if "namespace" in endpoint.lower() and "/namespaces/" in endpoint:
-                    try:
-                        parts = endpoint.strip("/").split("/")
-                        ns_index = parts.index("namespaces")
-                        ns_name = (
-                            parts[ns_index + 1]
-                            if len(parts) > ns_index + 1
-                            else "unknown"
-                        )
-                    except (ValueError, IndexError):
-                        ns_name = "unknown"
-                    raise NamespaceNotFound(
-                        namespace_name=ns_name,
-                        message=f"Resource not found: {response.text}",
-                    )
-                else:
-                    raise APIError(
-                        status_code=404, message=f"Not Found: {response.text}"
-                    )
-            elif response.status_code == 409:
-                raise ConflictError(message=f"Conflict: {response.text}")
-            else:
-                # Use raise_for_status() for other 4xx/5xx errors, then wrap in APIError
-                try:
-                    response.raise_for_status()
-                except httpx.HTTPStatusError as http_err:
-                    raise APIError(
-                        status_code=response.status_code,
-                        message=f"API Error: {response.text}",
-                    ) from http_err
-
-        # Log exceptions at ERROR level
         except httpx.TimeoutException as timeout_e:
             logger.error(
-                f"Request to {url} timed out after {self.timeout} seconds.",
+                f"Request to {endpoint} timed out after {self.timeout} seconds.",
                 exc_info=True,
             )
             raise MoorchehError(
                 f"Request timed out after {self.timeout} seconds."
             ) from timeout_e
         except httpx.RequestError as req_e:
-            logger.error(f"Network or request error for {url}: {req_e}", exc_info=True)
+            logger.error(
+                f"Network or request error for {endpoint}: {req_e}", exc_info=True
+            )
             raise MoorchehError(f"Network or request error: {req_e}") from req_e
-        # Catch specific SDK exceptions if needed, but generally let them propagate
-        except (
-            MoorchehError
-        ) as sdk_err:  # Catch our own errors if needed for specific logging
-            logger.error(f"SDK Error during request to {url}: {sdk_err}", exc_info=True)
-            raise  # Re-raise the original SDK error
+        except MoorchehError as sdk_err:
+            logger.error(
+                f"SDK Error during request to {endpoint}: {sdk_err}", exc_info=True
+            )
+            raise
         except Exception as e:
             logger.error(
-                f"An unexpected error occurred during request to {url}: {e}",
+                f"An unexpected error occurred during request to {endpoint}: {e}",
                 exc_info=True,
             )
             raise MoorchehError(f"An unexpected error occurred: {e}") from e
 
-        # This part should not be reachable if an error occurred and was raised
-        return None  # Should only be reached in case of unhandled flow, add for safety
+    def _process_response(
+        self,
+        response: httpx.Response,
+        endpoint: str,
+        expected_status: int,
+        alt_success_status: int | None,
+    ) -> dict[str, Any] | bytes | None:
+        is_expected_status = response.status_code == expected_status
+        is_alt_status = (
+            alt_success_status is not None
+            and response.status_code == alt_success_status
+        )
 
-    # Context manager methods are inherited from SyncAPIClient
+        if is_expected_status or is_alt_status:
+            if response.status_code == 204:
+                logger.info(
+                    f"Request to {endpoint} successful (Status: 204 No Content)"
+                )
+                return None
+
+            content_type = response.headers.get("content-type", "").lower()
+            if content_type == "image/png":
+                logger.info(
+                    f"Request to {endpoint} successful (Status:"
+                    f" {response.status_code}, Content-Type: PNG)"
+                )
+                return response.content
+
+            try:
+                logger.info(
+                    f"Request to {endpoint} successful (Status: {response.status_code})"
+                )
+                if not response.content:
+                    logger.debug("Response content is empty, returning empty dict.")
+                    return {}
+                json_response = response.json()
+                logger.debug(f"Decoded JSON response: {json_response}")
+                return cast(dict[str, Any], json_response)
+            except Exception as json_e:
+                # Log JSON decoding errors at WARNING level, as the status code was successful
+                logger.warning(
+                    "Error decoding JSON response despite success status"
+                    f" {response.status_code} from {endpoint}: {json_e}",
+                    exc_info=True,
+                )
+                raise APIError(
+                    status_code=response.status_code,
+                    message=f"Failed to decode JSON response: {response.text}",
+                ) from json_e
+
+        # Handle error responses
+        self._handle_error_response(response, endpoint)
+        return None  # Should not be reached
+
+    def _handle_error_response(self, response: httpx.Response, endpoint: str) -> None:
+        # Log error responses before raising exceptions
+        logger.warning(
+            f"Request to {endpoint} failed with status {response.status_code}."
+            f" Response text: {response.text}"
+        )
+
+        if response.status_code == 400:
+            raise InvalidInputError(message=f"Bad Request: {response.text}")
+        elif response.status_code == 401 or response.status_code == 403:
+            raise AuthenticationError(
+                message=f"Forbidden/Unauthorized: {response.text}"
+            )
+        elif response.status_code == 404:
+            # Try to extract namespace name for better error message if applicable
+            if "namespace" in endpoint.lower() and "/namespaces/" in endpoint:
+                try:
+                    parts = endpoint.strip("/").split("/")
+                    ns_index = parts.index("namespaces")
+                    ns_name = (
+                        parts[ns_index + 1] if len(parts) > ns_index + 1 else "unknown"
+                    )
+                except (ValueError, IndexError):
+                    ns_name = "unknown"
+                raise NamespaceNotFound(
+                    namespace_name=ns_name,
+                    message=f"Resource not found: {response.text}",
+                )
+            else:
+                raise APIError(status_code=404, message=f"Not Found: {response.text}")
+        elif response.status_code == 409:
+            raise ConflictError(message=f"Conflict: {response.text}")
+        else:
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as http_err:
+                raise APIError(
+                    status_code=response.status_code,
+                    message=f"API Error: {response.text}",
+                ) from http_err
+
+    def __repr__(self) -> str:
+        return f"MoorchehClient(base_url='{self.base_url}', timeout={self.timeout})"
 
 
 class AsyncMoorchehClient(AsyncAPIClient):
@@ -287,7 +281,7 @@ class AsyncMoorchehClient(AsyncAPIClient):
         self,
         api_key: str | None = None,
         base_url: str | None = None,
-        timeout: float | None = 30.0,
+        timeout: Timeout = 30.0,
     ):
         self.api_key = api_key or os.environ.get("MOORCHEH_API_KEY")
         if not self.api_key:
@@ -308,4 +302,9 @@ class AsyncMoorchehClient(AsyncAPIClient):
             api_key=self.api_key,
             timeout=self.timeout,
             custom_headers={"User-Agent": f"moorcheh-python-sdk/{sdk_version}"},
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"AsyncMoorchehClient(base_url='{self.base_url}', timeout={self.timeout})"
         )

@@ -1,6 +1,5 @@
-from typing import Any
-
 from ..exceptions import APIError, InvalidInputError
+from ..types import JSON
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -8,9 +7,7 @@ logger = setup_logging(__name__)
 
 
 class Vectors(BaseResource):
-    def upload(
-        self, namespace_name: str, vectors: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def upload(self, namespace_name: str, vectors: list[JSON]) -> JSON:
         """
         Uploads pre-computed vectors to a specified vector-based namespace.
 
@@ -110,7 +107,7 @@ class Vectors(BaseResource):
             )
         return response_data
 
-    def delete(self, namespace_name: str, ids: list[str | int]) -> dict[str, Any]:
+    def delete(self, namespace_name: str, ids: list[str | int]) -> JSON:
         """
         Deletes specific vectors from a vector-based namespace by their IDs.
 
