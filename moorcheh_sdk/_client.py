@@ -1,4 +1,5 @@
 import os
+import warnings
 from functools import cached_property
 from typing import Any, cast
 
@@ -111,12 +112,147 @@ class MoorchehClient(SyncAPIClient):
         return Vectors(self)
 
     @cached_property
-    def search(self) -> Search:
+    def similarity_search(self) -> Search:
         return Search(self)
 
     @cached_property
     def answer(self) -> Answer:
         return Answer(self)
+
+    # --- OLD METHODS ---
+    def create_namespace(
+        self, namespace_name: str, type: str, vector_dimension: int | None = None
+    ) -> dict[str, Any]:
+        warnings.warn(
+            "create_namespace is deprecated and will be removed in a future version. "
+            "Use client.namespaces.create instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.namespaces.create(
+            namespace_name=namespace_name, type=type, vector_dimension=vector_dimension
+        )
+
+    def delete_namespace(self, namespace_name: str) -> None:
+        warnings.warn(
+            "delete_namespace is deprecated and will be removed in a future version. "
+            "Use client.namespaces.delete instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.namespaces.delete(namespace_name=namespace_name)
+
+    def list_namespaces(self) -> dict[str, Any]:
+        warnings.warn(
+            "list_namespaces is deprecated and will be removed in a future version. "
+            "Use client.namespaces.list instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.namespaces.list()
+
+    def upload_documents(
+        self, namespace_name: str, documents: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        warnings.warn(
+            "upload_documents is deprecated and will be removed in a future version. "
+            "Use client.documents.upload instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.documents.upload(namespace_name=namespace_name, documents=documents)
+
+    def get_documents(
+        self, namespace_name: str, ids: list[str | int]
+    ) -> dict[str, Any]:
+        warnings.warn(
+            "get_documents is deprecated and will be removed in a future version. "
+            "Use client.documents.get instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.documents.get(namespace_name=namespace_name, ids=ids)
+
+    def upload_vectors(
+        self, namespace_name: str, vectors: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        warnings.warn(
+            "upload_vectors is deprecated and will be removed in a future version. "
+            "Use client.vectors.upload instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.vectors.upload(namespace_name=namespace_name, vectors=vectors)
+
+    def search(
+        self,
+        namespaces: list[str],
+        query: str | list[float],
+        top_k: int = 10,
+        threshold: float | None = None,
+        kiosk_mode: bool = False,
+    ) -> dict[str, Any]:
+        warnings.warn(
+            "search is deprecated and will be removed in a future version. "
+            "Use client.search.query instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.similarity_search.query(
+            namespaces=namespaces,
+            query=query,
+            top_k=top_k,
+            threshold=threshold,
+            kiosk_mode=kiosk_mode,
+        )
+
+    def get_generative_answer(
+        self,
+        namespace: str,
+        query: str,
+        top_k: int = 5,
+        ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
+        chat_history: list[dict[str, Any]] | None = None,
+        temperature: float = 0.7,
+    ) -> dict[str, Any]:
+        warnings.warn(
+            "get_generative_answer is deprecated and will be removed in a future version. "
+            "Use client.answer.generate instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.answer.generate(
+            namespace=namespace,
+            query=query,
+            top_k=top_k,
+            ai_model=ai_model,
+            chat_history=chat_history,
+            temperature=temperature,
+        )
+
+    def delete_documents(
+        self, namespace_name: str, ids: list[str | int]
+    ) -> dict[str, Any]:
+        warnings.warn(
+            "delete_documents is deprecated and will be removed in a future version. "
+            "Use client.documents.delete instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.documents.delete(namespace_name=namespace_name, ids=ids)
+
+    def delete_vectors(
+        self, namespace_name: str, ids: list[str | int]
+    ) -> dict[str, Any]:
+        warnings.warn(
+            "delete_vectors is deprecated and will be removed in a future version. "
+            "Use client.vectors.delete instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.vectors.delete(namespace_name=namespace_name, ids=ids)
+
+    # --- OLD METHODS ---
 
     def _request(
         self,

@@ -30,7 +30,9 @@ def test_search_success_text(client, mocker, mock_response):
     mock_resp = mock_response(200, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.search.query(namespaces=namespaces, query=query, top_k=top_k)
+    result = client.similarity_search.query(
+        namespaces=namespaces, query=query, top_k=top_k
+    )
 
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST",
@@ -59,7 +61,7 @@ def test_search_success_vector_with_threshold(client, mocker, mock_response):
     mock_resp = mock_response(200, json_data=expected_response)
     client._mock_httpx_instance.request.return_value = mock_resp
 
-    result = client.search.query(
+    result = client.similarity_search.query(
         namespaces=namespaces, query=query, top_k=top_k, threshold=threshold
     )
 
@@ -101,7 +103,7 @@ def test_search_invalid_input_client_side(
 ):
     """Test client-side validation for search parameters."""
     with pytest.raises(InvalidInputError):
-        client.search.query(
+        client.similarity_search.query(
             namespaces=invalid_ns,
             query=invalid_query,
             top_k=invalid_k,
@@ -128,7 +130,7 @@ def test_search_namespace_not_found(client, mocker, mock_response):
     with pytest.raises(
         APIError, match="Not Found: Namespace 'non-existent-ns' not found."
     ):
-        client.search.query(namespaces=namespaces, query=query)
+        client.similarity_search.query(namespaces=namespaces, query=query)
     client._mock_httpx_instance.request.assert_called_once()
 
 
@@ -141,5 +143,5 @@ def test_search_invalid_input_server_side(client, mocker, mock_response):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     with pytest.raises(InvalidInputError, match=error_text):
-        client.search.query(namespaces=namespaces, query=query)
+        client.similarity_search.query(namespaces=namespaces, query=query)
     client._mock_httpx_instance.request.assert_called_once()

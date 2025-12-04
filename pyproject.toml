@@ -57,6 +57,9 @@ addopts = "-ra -q"
 testpaths = [
     "tests",
 ]
+filterwarnings = [
+    "always::DeprecationWarning",
+]
 
 # Optional: Configure Ruff
 [tool.ruff]
