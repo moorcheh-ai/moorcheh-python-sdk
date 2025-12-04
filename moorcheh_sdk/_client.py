@@ -1,9 +1,9 @@
-import logging
 import os
 from typing import Any, cast
 
 import httpx
 
+from ._base_client import AsyncAPIClient, SyncAPIClient
 from .exceptions import (
     APIError,
     AuthenticationError,
@@ -13,16 +13,13 @@ from .exceptions import (
     NamespaceNotFound,
 )
 from .resources import Answer, Documents, Namespaces, Search, Vectors
+from .utils.constants import DEFAULT_BASE_URL
+from .utils.logging import setup_logging
 
-logger = logging.getLogger(__name__)
-if not logger.hasHandlers():
-    logger.addHandler(logging.NullHandler())
-
-DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1"
-INVALID_ID_CHARS = [" "]
+logger = setup_logging(__name__)
 
 
-class MoorchehClient:
+class MoorchehClient(SyncAPIClient):
     """
     Moorcheh Python SDK client for interacting with the Moorcheh Semantic Search API v1.
 
@@ -87,15 +84,11 @@ class MoorchehClient:
 
         from . import __version__ as sdk_version
 
-        self._client = httpx.Client(
+        super().__init__(
             base_url=self.base_url,
-            headers={
-                "x-api-key": self.api_key,
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "User-Agent": f"moorcheh-python-sdk/{sdk_version}",
-            },
+            api_key=self.api_key,
             timeout=self.timeout,
+            custom_headers={"User-Agent": f"moorcheh-python-sdk/{sdk_version}"},
         )
 
         logger.info(
@@ -280,31 +273,39 @@ class MoorchehClient:
         # This part should not be reachable if an error occurred and was raised
         return None  # Should only be reached in case of unhandled flow, add for safety
 
-    def close(self):
-        """
-        Closes the underlying HTTP client connection pool.
+    # Context manager methods are inherited from SyncAPIClient
 
-        It's recommended to call this method when you are finished with the client
-        instance, especially in long-running applications, or use the client as a
-        context manager (`with MoorchehClient(...) as client:`).
-        """
-        if hasattr(self, "_client") and self._client:
-            try:
-                self._client.close()
-                logger.info("MoorchehClient closed.")
-            except Exception as e:
-                logger.error(
-                    f"Error closing underlying HTTP client: {e}", exc_info=True
-                )
 
-    def __enter__(self):
-        """Enter the runtime context related to this object."""
-        return self
+class AsyncMoorchehClient(AsyncAPIClient):
+    """
+    Async Moorcheh Python SDK client.
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Exit the runtime context related to this object.
+    TODO: Implement async resources and methods.
+    """
 
-        Ensures the underlying HTTP client is closed.
-        """
-        self.close()
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        timeout: float | None = 30.0,
+    ):
+        self.api_key = api_key or os.environ.get("MOORCHEH_API_KEY")
+        if not self.api_key:
+            raise AuthenticationError(
+                "API key not provided. Pass it to the constructor or set the"
+                " MOORCHEH_API_KEY environment variable."
+            )
+
+        self.base_url = (
+            base_url or os.environ.get("MOORCHEH_BASE_URL") or DEFAULT_BASE_URL
+        ).rstrip("/")
+        self.timeout = timeout
+
+        from . import __version__ as sdk_version
+
+        super().__init__(
+            base_url=self.base_url,
+            api_key=self.api_key,
+            timeout=self.timeout,
+            custom_headers={"User-Agent": f"moorcheh-python-sdk/{sdk_version}"},
+        )

@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..client import MoorchehClient
+    from .._client import MoorchehClient
 
 
 class BaseResource:
