@@ -1,6 +1,7 @@
 from typing import Any
 
 from ..exceptions import APIError, InvalidInputError
+from ..types import JSON
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -15,7 +16,7 @@ class Search(BaseResource):
         top_k: int = 10,
         threshold: float | None = None,
         kiosk_mode: bool = False,
-    ) -> dict[str, Any]:
+    ) -> JSON:
         """
         Performs a semantic search across one or more specified namespaces.
 

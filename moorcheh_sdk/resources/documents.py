@@ -1,6 +1,5 @@
-from typing import Any
-
 from ..exceptions import APIError, InvalidInputError
+from ..types import JSON
 from ..utils.constants import INVALID_ID_CHARS
 from ..utils.logging import setup_logging
 from .base import BaseResource
@@ -9,9 +8,7 @@ logger = setup_logging(__name__)
 
 
 class Documents(BaseResource):
-    def upload(
-        self, namespace_name: str, documents: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def upload(self, namespace_name: str, documents: list[JSON]) -> JSON:
         """
         Uploads text documents to a specified text-based namespace.
 
@@ -99,7 +96,7 @@ class Documents(BaseResource):
         )
         return response_data
 
-    def get(self, namespace_name: str, ids: list[str | int]) -> dict[str, Any]:
+    def get(self, namespace_name: str, ids: list[str | int]) -> JSON:
         """
         Retrieves specific documents by their IDs from a text-based namespace.
 
@@ -178,7 +175,7 @@ class Documents(BaseResource):
         )
         return response_data
 
-    def delete(self, namespace_name: str, ids: list[str | int]) -> dict[str, Any]:
+    def delete(self, namespace_name: str, ids: list[str | int]) -> JSON:
         """
         Deletes specific document chunks from a text-based namespace by their IDs.
 

@@ -1,6 +1,7 @@
 from typing import Any
 
 from ..exceptions import APIError, InvalidInputError
+from ..types import JSON
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -10,7 +11,7 @@ logger = setup_logging(__name__)
 class Namespaces(BaseResource):
     def create(
         self, namespace_name: str, type: str, vector_dimension: int | None = None
-    ) -> dict[str, Any]:
+    ) -> JSON:
         """
         Creates a new namespace for storing data.
 
@@ -111,7 +112,7 @@ class Namespaces(BaseResource):
         # Log success after the request confirms it (no exception raised)
         logger.info(f"Namespace '{namespace_name}' deleted successfully.")
 
-    def list(self) -> dict[str, Any]:
+    def list(self) -> JSON:
         """
         Retrieves a list of all namespaces accessible by the current API key.
 
