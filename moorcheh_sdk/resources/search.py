@@ -18,61 +18,37 @@ class Search(BaseResource):
         kiosk_mode: bool = False,
     ) -> JSON:
         """
-        Performs a semantic search across one or more specified namespaces.
-
-        Searches for items (documents or vectors) that are semantically similar
-        to the provided query. The query type (text or vector) must match the
-        type of the target namespace(s).
+        Performs semantic search across namespaces.
 
         Args:
-            namespaces: A list of one or more namespace names (strings) to search within.
-                All listed namespaces must be of the same type ('text' or 'vector')
-                and match the type of the `query`.
-            query: The search query. Either:
-                - A text string (str) for searching text namespaces.
-                - A list of floats (List[float]) representing a vector embedding
-                  for searching vector namespaces. The vector dimension must match
-                  the dimension of the target vector namespace(s).
-            top_k: The maximum number of results to return (default: 10). Must be
-                a positive integer.
-            threshold: An optional minimum similarity score (ITS score) between 0 and 1.
-                Only results with a score greater than or equal to this threshold
-                will be returned. Defaults to None (no threshold filtering).
-            kiosk_mode: An optional boolean flag (default: False). If True, applies
-                stricter filtering based on internal criteria (consult Moorcheh
-                documentation for details).
+            namespaces: A list of namespace names to search within.
+            query: The search query (text string or vector list).
+            top_k: The maximum number of results to return. Defaults to 10.
+            threshold: Minimum similarity score (0-1). Defaults to None.
+            kiosk_mode: Enable strict filtering. Defaults to False.
 
         Returns:
-            A dictionary containing the search results and execution time.
-            The results are under the 'results' key, which is a list of dictionaries.
-            Each result dictionary contains 'id', 'score', and 'metadata' (and 'text'
-            for text namespace results).
-            Example (Text Search):
-            ```json
+            A dictionary containing search results.
+
+            Structure:
             {
-              "results": [
-                {
-                  "id": "doc-abc",
-                  "score": 0.85,
-                  "text": "Content related to the query...",
-                  "metadata": {"source": "file.txt"}
-                }
-              ],
-              "execution_time": 0.123
+                "results": [
+                    {
+                        "id": str | int,
+                        "score": float,
+                        "text": str,  # Only for text namespaces
+                        "metadata": dict
+                    }
+                ],
+                "execution_time": float
             }
-            ```
 
         Raises:
-            InvalidInputError: If `namespaces` is invalid, `query` is empty,
-                `top_k` is not a positive integer, `threshold` is outside the
-                valid range (0-1), or `kiosk_mode` is not boolean. Also raised
-                for API 400 errors (e.g., query type mismatch, vector dimension
-                mismatch).
-            NamespaceNotFound: If any of the specified namespaces do not exist
-                (API 404 error).
-            AuthenticationError: If the API key is invalid or lacks permissions.
-            APIError: For other unexpected API errors during the search.
-            MoorchehError: For network issues or client-side request problems.
+            InvalidInputError: If input is invalid.
+            NamespaceNotFound: If a namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
         """
         if not isinstance(namespaces, list) or not namespaces:
             raise InvalidInputError("'namespaces' must be a non-empty list of strings.")

@@ -9,39 +9,34 @@ logger = setup_logging(__name__)
 class Vectors(BaseResource):
     def upload(self, namespace_name: str, vectors: list[JSON]) -> JSON:
         """
-        Uploads pre-computed vectors to a specified vector-based namespace.
+        Uploads pre-computed vectors to a vector-based namespace.
 
-        Use this method when you have already generated vector embeddings outside
-        of Moorcheh. The upload process is synchronous.
+        This process is synchronous.
 
         Args:
-            namespace_name: The name of the target *vector-based* namespace.
-            vectors: A list of dictionaries. Each dictionary **must** contain:
-                - `id` (Union[str, int]): A unique identifier for this vector.
-                - `vector` (List[float]): The vector embedding as a list of floats.
-                  The dimension must match the `vector_dimension` of the namespace.
-                An optional `metadata` (dict) key can be included to store
-                additional information associated with the vector.
+            namespace_name: The name of the target vector-based namespace.
+            vectors: A list of dictionaries representing the vectors.
+                Each dictionary must contain:
+                - "id" (str | int): Unique identifier for the vector.
+                - "vector" (list[float]): The vector embedding.
+                - "metadata" (dict, optional): Additional metadata.
 
         Returns:
-            A dictionary confirming the result of the upload operation.
-            If all vectors are processed successfully (API status 201), the 'status'
-            will be 'success'. If some vectors fail (e.g., dimension mismatch)
-            (API status 207), the 'status' will be 'partial', and the 'errors'
-            list will contain details about the failed items.
-            Example (Success): `{'status': 'success', 'vector_ids_processed': ['vec1', 'vec2'], 'errors': []}`
-            Example (Partial): `{'status': 'partial', 'vector_ids_processed': ['vec1'], 'errors': [{'id': 'vec2', 'error': 'Dimension mismatch'}]}`
+            A dictionary confirming the result of the upload.
+
+            Structure:
+            {
+                "status": "success" | "partial",
+                "vector_ids_processed": list[str | int],
+                "errors": list[dict]
+            }
 
         Raises:
-            InvalidInputError: If `namespace_name` is invalid, `vectors` is not a
-                non-empty list of dictionaries, or if any dictionary within `vectors`
-                lacks a valid `id` or `vector`. Also raised for API 400 errors
-                (e.g., vector dimension mismatch detected server-side).
-            NamespaceNotFound: If the specified `namespace_name` does not exist or
-                is not a vector-based namespace (API 404 error).
-            AuthenticationError: If the API key is invalid or lacks permissions.
-            APIError: For other unexpected API errors during the upload request.
-            MoorchehError: For network issues or client-side request problems.
+            InvalidInputError: If input validation fails or API returns 400.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
         """
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
@@ -109,29 +104,28 @@ class Vectors(BaseResource):
 
     def delete(self, namespace_name: str, ids: list[str | int]) -> JSON:
         """
-        Deletes specific vectors from a vector-based namespace by their IDs.
+        Deletes vectors by their IDs from a vector-based namespace.
 
         Args:
-            namespace_name: The name of the target *vector-based* namespace.
-            ids: A list of vector IDs (strings or integers) to delete.
+            namespace_name: The name of the vector-based namespace.
+            ids: A list of vector IDs to delete.
 
         Returns:
             A dictionary confirming the deletion status.
-            If all IDs are deleted successfully (API status 200), the 'status'
-            will be 'success'. If some IDs are not found or fail (API status 207),
-            the 'status' will be 'partial', and the 'errors' list will contain
-            details about the failed IDs.
-            Example (Success): `{'status': 'success', 'deleted_ids': ['vec1', 456], 'errors': []}`
-            Example (Partial): `{'status': 'partial', 'deleted_ids': ['vec1'], 'errors': [{'id': 456, 'error': 'ID not found'}]}`
+
+            Structure:
+            {
+                "status": "success" | "partial",
+                "deleted_ids": list[str | int],
+                "errors": list[dict]
+            }
 
         Raises:
-            InvalidInputError: If `namespace_name` is invalid or `ids` is not a
-                non-empty list of valid IDs. Also raised for API 400 errors.
-            NamespaceNotFound: If the specified `namespace_name` does not exist or
-                is not a vector-based namespace (API 404 error).
-            AuthenticationError: If the API key is invalid or lacks permissions.
-            APIError: For other unexpected API errors during the deletion request.
-            MoorchehError: For network issues or client-side request problems.
+            InvalidInputError: If input is invalid.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
         """
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")

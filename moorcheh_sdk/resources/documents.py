@@ -10,33 +10,33 @@ logger = setup_logging(__name__)
 class Documents(BaseResource):
     def upload(self, namespace_name: str, documents: list[JSON]) -> JSON:
         """
-        Uploads text documents to a specified text-based namespace.
+        Uploads text documents to a text-based namespace.
 
-        Moorcheh processes these documents asynchronously, embedding the text content
-        for semantic search. Each dictionary in the `documents` list represents a
-        single text chunk or document.
+        This process is asynchronous. Documents are queued for embedding and indexing.
 
         Args:
-            namespace_name: The name of the target *text-based* namespace.
-            documents: A list of dictionaries. Each dictionary **must** contain:
-                - `id` (Union[str, int]): A unique identifier for this document chunk.
-                - `text` (str): The text content to be embedded and indexed.
-                Any other keys in the dictionary are stored as metadata associated
-                with the document chunk.
+            namespace_name: The name of the target text-based namespace.
+            documents: A list of dictionaries representing the documents.
+                Each dictionary must contain:
+                - "id" (str | int): Unique identifier for the document.
+                - "text" (str): The text content to embed.
+                - "metadata" (dict, optional): Additional metadata.
 
         Returns:
-            A dictionary confirming the documents were successfully queued for processing.
-            Example: `{'status': 'queued', 'submitted_ids': ['doc1', 'doc2']}`
+            A dictionary confirming the documents were queued.
+
+            Structure:
+            {
+                "status": "queued",
+                "submitted_ids": list[str | int]
+            }
 
         Raises:
-            InvalidInputError: If `namespace_name` is invalid, `documents` is not a
-                non-empty list of dictionaries, or if any dictionary within `documents`
-                lacks a valid `id` or `text`. Also raised for API 400 errors.
-            NamespaceNotFound: If the specified `namespace_name` does not exist or
-                is not a text-based namespace (API 404 error).
-            AuthenticationError: If the API key is invalid or lacks permissions.
-            APIError: For other unexpected API errors during the upload request.
-            MoorchehError: For network issues or client-side request problems.
+            InvalidInputError: If input validation fails or API returns 400.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
         """
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
@@ -98,42 +98,32 @@ class Documents(BaseResource):
 
     def get(self, namespace_name: str, ids: list[str | int]) -> JSON:
         """
-        Retrieves specific documents by their IDs from a text-based namespace.
-
-        This endpoint allows you to fetch documents that have been previously
-        uploaded and indexed, including all their metadata and content.
+        Retrieves documents by their IDs from a text-based namespace.
 
         Args:
-            namespace_name: The name of the target text-based namespace.
-            ids: A list of document IDs (strings or integers) to retrieve.
-                Cannot be empty. Maximum of 100 IDs per request.
+            namespace_name: The name of the text-based namespace.
+            ids: A list of document IDs to retrieve (max 100).
 
         Returns:
             A dictionary containing the retrieved documents.
-            Only documents that exist in the namespace will be returned.
-            Non-existent document IDs will be ignored.
-            Example:
-            ```json
+
+            Structure:
             {
-              "documents": [
-                {
-                  "id": "doc1",
-                  "text": "Document content...",
-                  "metadata": {"source": "file.txt"}
-                }
-              ]
+                "documents": [
+                    {
+                        "id": str | int,
+                        "text": str,
+                        "metadata": dict
+                    }
+                ]
             }
-            ```
 
         Raises:
-            InvalidInputError: If `namespace_name` is invalid, `ids` is not a
-                non-empty list of valid IDs, or if more than 100 IDs are provided.
-                Also raised for API 400 errors.
-            NamespaceNotFound: If the specified `namespace_name` does not exist
-                (API 404 error).
-            AuthenticationError: If the API key is invalid or lacks permissions.
-            APIError: For other unexpected API errors during the request.
-            MoorchehError: For network issues or client-side request problems.
+            InvalidInputError: If input is invalid or >100 IDs requested.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
         """
         logger.info(
             f"Attempting to get {len(ids)} document(s) from namespace"
@@ -177,29 +167,28 @@ class Documents(BaseResource):
 
     def delete(self, namespace_name: str, ids: list[str | int]) -> JSON:
         """
-        Deletes specific document chunks from a text-based namespace by their IDs.
+        Deletes documents by their IDs from a text-based namespace.
 
         Args:
-            namespace_name: The name of the target *text-based* namespace.
-            ids: A list of document chunk IDs (strings or integers) to delete.
+            namespace_name: The name of the text-based namespace.
+            ids: A list of document IDs to delete.
 
         Returns:
             A dictionary confirming the deletion status.
-            If all IDs are deleted successfully (API status 200), the 'status'
-            will be 'success'. If some IDs are not found or fail (API status 207),
-            the 'status' will be 'partial', and the 'errors' list will contain
-            details about the failed IDs.
-            Example (Success): `{'status': 'success', 'deleted_ids': ['doc1', 123], 'errors': []}`
-            Example (Partial): `{'status': 'partial', 'deleted_ids': ['doc1'], 'errors': [{'id': 123, 'error': 'ID not found'}]}`
+
+            Structure:
+            {
+                "status": "success" | "partial",
+                "deleted_ids": list[str | int],
+                "errors": list[dict]
+            }
 
         Raises:
-            InvalidInputError: If `namespace_name` is invalid or `ids` is not a
-                non-empty list of valid IDs. Also raised for API 400 errors.
-            NamespaceNotFound: If the specified `namespace_name` does not exist or
-                is not a text-based namespace (API 404 error).
-            AuthenticationError: If the API key is invalid or lacks permissions.
-            APIError: For other unexpected API errors during the deletion request.
-            MoorchehError: For network issues or client-side request problems.
+            InvalidInputError: If input is invalid.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
         """
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
