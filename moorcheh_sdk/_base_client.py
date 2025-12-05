@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -69,7 +69,7 @@ class SyncAPIClient:
         return self._client.request(
             method=method,
             url=path,
-            **kwargs,
+            **cast(Any, kwargs),
         )
 
     def close(self) -> None:
@@ -149,7 +149,7 @@ class AsyncAPIClient:
         return await self._client.request(
             method=method,
             url=path,
-            **kwargs,
+            **cast(Any, kwargs),
         )
 
     async def close(self) -> None:
