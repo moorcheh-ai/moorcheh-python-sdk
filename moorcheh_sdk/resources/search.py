@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Any, cast
 
 from ..exceptions import APIError, InvalidInputError
-from ..types import JSON
+from ..types import SearchResponse
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -14,9 +14,9 @@ class Search(BaseResource):
         namespaces: list[str],
         query: str | list[float],
         top_k: int = 10,
-        threshold: float | None = 0.7,
+        threshold: float | None = 0.25,
         kiosk_mode: bool = False,
-    ) -> JSON:
+    ) -> SearchResponse:
         """
         Performs semantic search across namespaces.
 
@@ -24,7 +24,7 @@ class Search(BaseResource):
             namespaces: A list of namespace names to search within.
             query: The search query (text string or vector list).
             top_k: The maximum number of results to return. Defaults to 10.
-            threshold: Minimum similarity score (0-1). Defaults to 0.7.
+            threshold: Minimum similarity score (0-1). Defaults to 0.25.
             kiosk_mode: Enable strict filtering. Defaults to False.
 
         Returns:
@@ -77,16 +77,14 @@ class Search(BaseResource):
 
         payload: dict[str, Any] = {
             "namespaces": namespaces,
-            "query": query,  # Keep original query type
+            "query": query,
             "top_k": top_k,
             "kiosk_mode": kiosk_mode,
         }
-        if threshold is not None:
+        if kiosk_mode and threshold is not None:
             payload["threshold"] = threshold
 
-        logger.debug(
-            f"Search payload: {payload}"
-        )  # Be careful logging query if it could be sensitive/large
+        logger.debug(f"Search payload: {payload}")
 
         response_data = self._client._request(
             method="POST", endpoint="/search", json_data=payload, expected_status=200
@@ -102,7 +100,5 @@ class Search(BaseResource):
             f"Search completed successfully. Found {result_count} result(s). Execution"
             f" time: {exec_time}s."
         )
-        logger.debug(
-            f"Search results: {response_data}"
-        )  # Log full results at debug level
-        return response_data
+        logger.debug(f"Search results: {response_data}")
+        return cast(SearchResponse, response_data)
