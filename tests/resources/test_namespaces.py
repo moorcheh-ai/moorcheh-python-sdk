@@ -182,7 +182,7 @@ def test_list_namespaces_api_error(client, mocker, mock_response):
 
     with pytest.raises(APIError, match="API Error: Internal Server Error"):
         client.namespaces.list()
-    client._mock_httpx_instance.request.assert_called_once()
+    assert client._mock_httpx_instance.request.call_count == 4
 
 
 def test_list_namespaces_auth_error(client, mocker, mock_response):

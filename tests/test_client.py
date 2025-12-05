@@ -95,7 +95,7 @@ def test_request_timeout(client, mocker):
 
     with pytest.raises(MoorchehError, match="Request timed out after 30.0 seconds."):
         client.namespaces.list()
-    client._mock_httpx_instance.request.assert_called_once()
+    assert client._mock_httpx_instance.request.call_count == 4
 
 
 def test_request_network_error(client, mocker):

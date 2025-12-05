@@ -125,4 +125,4 @@ def test_get_generative_answer_server_error(client, mocker, mock_response):
 
     with pytest.raises(APIError, match="API Error: Upstream LLM provider failed"):
         client.answer.generate(namespace=TEST_NAMESPACE, query="test")
-    client._mock_httpx_instance.request.assert_called_once()
+    assert client._mock_httpx_instance.request.call_count == 4
