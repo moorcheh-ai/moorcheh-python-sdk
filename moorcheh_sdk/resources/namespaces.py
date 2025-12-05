@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Any, cast
 
 from ..exceptions import APIError, InvalidInputError
-from ..types import JSON
+from ..types import NamespaceCreateResponse, NamespaceListResponse
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -11,7 +11,7 @@ logger = setup_logging(__name__)
 class Namespaces(BaseResource):
     def create(
         self, namespace_name: str, type: str, vector_dimension: int | None = None
-    ) -> JSON:
+    ) -> NamespaceCreateResponse:
         """
         Creates a new namespace.
 
@@ -77,7 +77,7 @@ class Namespaces(BaseResource):
             f"Successfully created namespace '{namespace_name}'. Response:"
             f" {response_data}"
         )
-        return response_data
+        return cast(NamespaceCreateResponse, response_data)
 
     def delete(self, namespace_name: str) -> None:
         """
@@ -103,7 +103,7 @@ class Namespaces(BaseResource):
         # Log success after the request confirms it (no exception raised)
         logger.info(f"Namespace '{namespace_name}' deleted successfully.")
 
-    def list(self) -> JSON:
+    def list(self) -> NamespaceListResponse:
         """
         Lists all available namespaces.
 
@@ -150,4 +150,4 @@ class Namespaces(BaseResource):
         count = len(response_data.get("namespaces", []))
         logger.info(f"Successfully listed {count} namespace(s).")
         logger.debug(f"List namespaces response data: {response_data}")
-        return response_data
+        return cast(NamespaceListResponse, response_data)

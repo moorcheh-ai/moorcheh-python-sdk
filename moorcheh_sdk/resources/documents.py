@@ -1,5 +1,12 @@
+from typing import cast
+
 from ..exceptions import APIError, InvalidInputError
-from ..types import JSON
+from ..types import (
+    Document,
+    DocumentDeleteResponse,
+    DocumentGetResponse,
+    DocumentUploadResponse,
+)
 from ..utils.constants import INVALID_ID_CHARS
 from ..utils.logging import setup_logging
 from .base import BaseResource
@@ -8,7 +15,9 @@ logger = setup_logging(__name__)
 
 
 class Documents(BaseResource):
-    def upload(self, namespace_name: str, documents: list[JSON]) -> JSON:
+    def upload(
+        self, namespace_name: str, documents: list[Document]
+    ) -> DocumentUploadResponse:
         """
         Uploads text documents to a text-based namespace.
 
@@ -94,9 +103,9 @@ class Documents(BaseResource):
             f"Successfully queued {submitted_count} documents for upload to"
             f" '{namespace_name}'. Status: {response_data.get('status')}"
         )
-        return response_data
+        return cast(DocumentUploadResponse, response_data)
 
-    def get(self, namespace_name: str, ids: list[str | int]) -> JSON:
+    def get(self, namespace_name: str, ids: list[str | int]) -> DocumentGetResponse:
         """
         Retrieves documents by their IDs from a text-based namespace.
 
@@ -163,9 +172,11 @@ class Documents(BaseResource):
             f"Successfully retrieved {doc_count} document(s) from namespace"
             f" '{namespace_name}'."
         )
-        return response_data
+        return cast(DocumentGetResponse, response_data)
 
-    def delete(self, namespace_name: str, ids: list[str | int]) -> JSON:
+    def delete(
+        self, namespace_name: str, ids: list[str | int]
+    ) -> DocumentDeleteResponse:
         """
         Deletes documents by their IDs from a text-based namespace.
 
@@ -235,4 +246,4 @@ class Documents(BaseResource):
             logger.warning(
                 f"Delete documents encountered errors: {response_data.get('errors')}"
             )
-        return response_data
+        return cast(DocumentDeleteResponse, response_data)

@@ -53,7 +53,7 @@ def test_search_success_vector_with_threshold(client, mocker, mock_response):
     query = [0.1] * TEST_VECTOR_DIM
     namespaces = [TEST_NAMESPACE, TEST_NAMESPACE_2]
     top_k = 3
-    threshold = 0.75
+    threshold = 0.25
     expected_response = {
         "results": [{"id": "vec1", "score": 0.8, "metadata": {}}],
         "execution_time": 0.2,
@@ -62,7 +62,11 @@ def test_search_success_vector_with_threshold(client, mocker, mock_response):
     client._mock_httpx_instance.request.return_value = mock_resp
 
     result = client.similarity_search.query(
-        namespaces=namespaces, query=query, top_k=top_k, threshold=threshold
+        namespaces=namespaces,
+        query=query,
+        top_k=top_k,
+        threshold=threshold,
+        kiosk_mode=True,
     )
 
     client._mock_httpx_instance.request.assert_called_once_with(
@@ -73,7 +77,7 @@ def test_search_success_vector_with_threshold(client, mocker, mock_response):
             "query": query,
             "top_k": top_k,
             "threshold": threshold,
-            "kiosk_mode": False,
+            "kiosk_mode": True,
         },
         params=None,
     )
@@ -145,3 +149,27 @@ def test_search_invalid_input_server_side(client, mocker, mock_response):
     with pytest.raises(InvalidInputError, match=error_text):
         client.similarity_search.query(namespaces=namespaces, query=query)
     client._mock_httpx_instance.request.assert_called_once()
+
+
+def test_search_threshold_ignored_without_kiosk(client, mocker, mock_response):
+    """Test that threshold is ignored when kiosk_mode is False."""
+    query = "test"
+    namespaces = [TEST_NAMESPACE]
+    threshold = 0.9
+
+    expected_response = {"results": [], "execution_time": 0.1}
+    mock_resp = mock_response(200, json_data=expected_response)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    client.similarity_search.query(
+        namespaces=namespaces,
+        query=query,
+        threshold=threshold,
+        kiosk_mode=False,
+    )
+
+    client._mock_httpx_instance.request.assert_called_once()
+    call_args = client._mock_httpx_instance.request.call_args
+    payload = call_args.kwargs["json"]
+    assert "threshold" not in payload
+    assert payload["kiosk_mode"] is False

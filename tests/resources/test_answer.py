@@ -34,11 +34,43 @@ def test_get_generative_answer_success(client, mocker, mock_response):
         "aiModel": model,
         "chatHistory": [],
         "temperature": 0.7,
+        "headerPrompt": "",
+        "footerPrompt": "",
     }
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST", url="/answer", json=expected_payload, params=None
     )
     assert result == expected_response
+
+
+def test_generate_answer_with_prompts(client, mocker, mock_response):
+    """Test get_generative_answer with header and footer prompts."""
+    query = "What is Moorcheh?"
+    header = "You are a helpful assistant."
+    footer = "Answer concisely."
+
+    expected_response = {
+        "answer": "Moorcheh is great.",
+        "model": "claude",
+        "contextCount": 1,
+        "query": query,
+    }
+    mock_resp = mock_response(200, json_data=expected_response)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    client.answer.generate(
+        namespace=TEST_NAMESPACE,
+        query=query,
+        header_prompt=header,
+        footer_prompt=footer,
+    )
+
+    client._mock_httpx_instance.request.assert_called_once()
+    call_args = client._mock_httpx_instance.request.call_args
+    payload = call_args.kwargs["json"]
+
+    assert payload["headerPrompt"] == header
+    assert payload["footerPrompt"] == footer
 
 
 @pytest.mark.parametrize(

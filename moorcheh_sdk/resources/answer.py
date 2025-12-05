@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Any, cast
 
 from ..exceptions import APIError, InvalidInputError
-from ..types import JSON
+from ..types import AnswerResponse, ChatHistoryItem
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -15,9 +15,11 @@ class Answer(BaseResource):
         query: str,
         top_k: int = 5,
         ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
-        chat_history: list[JSON] | None = None,
+        chat_history: list[ChatHistoryItem] | None = None,
         temperature: float = 0.7,
-    ) -> JSON:
+        header_prompt: str | None = None,
+        footer_prompt: str | None = None,
+    ) -> AnswerResponse:
         """
         Generates an AI answer based on a search query within a namespace.
 
@@ -34,6 +36,10 @@ class Answer(BaseResource):
                 Each item should be a dictionary. Defaults to None.
             temperature: The sampling temperature for the LLM (0.0 to 1.0).
                 Higher values introduce more randomness. Defaults to 0.7.
+            header_prompt: Optional header prompt to be used in the LLM.
+                Defaults to None.
+            footer_prompt: Optional footer prompt to be used in the LLM.
+                Defaults to None.
 
         Returns:
             A dictionary containing the generated answer and metadata.
@@ -80,6 +86,8 @@ class Answer(BaseResource):
             "aiModel": ai_model,
             "chatHistory": chat_history if chat_history is not None else [],
             "temperature": temperature,
+            "headerPrompt": header_prompt if header_prompt is not None else "",
+            "footerPrompt": footer_prompt if footer_prompt is not None else "",
         }
         logger.debug(f"Generative answer payload: {payload}")
 
@@ -97,4 +105,4 @@ class Answer(BaseResource):
             "Successfully received generative answer. Model used:"
             f" {response_data.get('model')}"
         )
-        return response_data
+        return cast(AnswerResponse, response_data)

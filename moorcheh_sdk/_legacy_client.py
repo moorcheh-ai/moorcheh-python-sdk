@@ -1,5 +1,20 @@
 import warnings
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Protocol
+
+from .types import (
+    AnswerResponse,
+    ChatHistoryItem,
+    Document,
+    DocumentDeleteResponse,
+    DocumentGetResponse,
+    DocumentUploadResponse,
+    NamespaceCreateResponse,
+    NamespaceListResponse,
+    SearchResponse,
+    Vector,
+    VectorDeleteResponse,
+    VectorUploadResponse,
+)
 
 if TYPE_CHECKING:
     from .resources import Answer, Documents, Namespaces, Search, Vectors
@@ -24,7 +39,7 @@ class LegacyClientMixin:
         namespace_name: str,
         type: str,
         vector_dimension: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> NamespaceCreateResponse:
         """
         [DEPRECATED] Creates a new namespace.
 
@@ -73,7 +88,7 @@ class LegacyClientMixin:
         )
         self.namespaces.delete(namespace_name=namespace_name)
 
-    def list_namespaces(self: "ClientProtocol") -> dict[str, Any]:
+    def list_namespaces(self: "ClientProtocol") -> NamespaceListResponse:
         """
         [DEPRECATED] Lists all available namespaces.
 
@@ -104,8 +119,8 @@ class LegacyClientMixin:
         return self.namespaces.list()
 
     def upload_documents(
-        self: "ClientProtocol", namespace_name: str, documents: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+        self: "ClientProtocol", namespace_name: str, documents: list[Document]
+    ) -> DocumentUploadResponse:
         """
         [DEPRECATED] Uploads text documents to a text-based namespace.
 
@@ -138,7 +153,7 @@ class LegacyClientMixin:
 
     def get_documents(
         self: "ClientProtocol", namespace_name: str, ids: list[str | int]
-    ) -> dict[str, Any]:
+    ) -> DocumentGetResponse:
         """
         [DEPRECATED] Retrieves documents by their IDs from a text-based namespace.
 
@@ -171,8 +186,8 @@ class LegacyClientMixin:
         return self.documents.get(namespace_name=namespace_name, ids=ids)
 
     def upload_vectors(
-        self: "ClientProtocol", namespace_name: str, vectors: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+        self: "ClientProtocol", namespace_name: str, vectors: list[Vector]
+    ) -> VectorUploadResponse:
         """
         [DEPRECATED] Uploads pre-computed vectors to a vector-based namespace.
 
@@ -209,9 +224,9 @@ class LegacyClientMixin:
         namespaces: list[str],
         query: str | list[float],
         top_k: int = 10,
-        threshold: float | None = 0.7,
+        threshold: float | None = 0.25,
         kiosk_mode: bool = False,
-    ) -> dict[str, Any]:
+    ) -> SearchResponse:
         """
         [DEPRECATED] Performs a semantic search across namespaces.
 
@@ -221,7 +236,7 @@ class LegacyClientMixin:
             namespaces: A list of namespace names to search within.
             query: The search query (text string or vector list).
             top_k: The maximum number of results to return. Defaults to 10.
-            threshold: Minimum similarity score (0-1). Defaults to 0.7.
+            threshold: Minimum similarity score (0-1). Defaults to 0.25.
             kiosk_mode: Enable strict filtering. Defaults to False.
 
         Returns:
@@ -260,9 +275,11 @@ class LegacyClientMixin:
         query: str,
         top_k: int = 5,
         ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
-        chat_history: list[dict[str, Any]] | None = None,
+        chat_history: list[ChatHistoryItem] | None = None,
         temperature: float = 0.7,
-    ) -> dict[str, Any]:
+        header_prompt: str | None = None,
+        footer_prompt: str | None = None,
+    ) -> AnswerResponse:
         """
         [DEPRECATED] Generates an AI answer based on a search query within a namespace.
 
@@ -278,6 +295,10 @@ class LegacyClientMixin:
                 Each item should be a dictionary. Defaults to None.
             temperature: The sampling temperature for the LLM (0.0 to 1.0).
                 Higher values introduce more randomness. Defaults to 0.7.
+            header_prompt: Optional header prompt to be used in the LLM.
+                Defaults to None.
+            footer_prompt: Optional footer prompt to be used in the LLM.
+                Defaults to None.
 
         Returns:
             A dictionary containing the generated answer and metadata.
@@ -303,11 +324,13 @@ class LegacyClientMixin:
             ai_model=ai_model,
             chat_history=chat_history,
             temperature=temperature,
+            header_prompt=header_prompt,
+            footer_prompt=footer_prompt,
         )
 
     def delete_documents(
         self: "ClientProtocol", namespace_name: str, ids: list[str | int]
-    ) -> dict[str, Any]:
+    ) -> DocumentDeleteResponse:
         """
         [DEPRECATED] Deletes documents by their IDs from a text-based namespace.
 
@@ -337,7 +360,7 @@ class LegacyClientMixin:
 
     def delete_vectors(
         self: "ClientProtocol", namespace_name: str, ids: list[str | int]
-    ) -> dict[str, Any]:
+    ) -> VectorDeleteResponse:
         """
         [DEPRECATED] Deletes vectors by their IDs from a vector-based namespace.
 
