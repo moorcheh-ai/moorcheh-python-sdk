@@ -42,7 +42,7 @@ def test_search_success_text(client, mocker, mock_response):
             "query": query,
             "top_k": top_k,
             "kiosk_mode": False,
-            "threshold": 0.7,
+            "threshold": 0.25,
         },
         params=None,
     )
