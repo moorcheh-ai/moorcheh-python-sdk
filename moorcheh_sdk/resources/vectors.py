@@ -55,7 +55,7 @@ class Vectors(BaseResource):
                 raise InvalidInputError(
                     f"Item at index {i} in 'vectors' is not a dictionary."
                 )
-            if "id" not in vec_item or not vec_item["id"]:
+            if "id" not in vec_item or vec_item["id"] is None or vec_item["id"] == "":
                 raise InvalidInputError(
                     f"Item at index {i} in 'vectors' is missing required key 'id' or it"
                     " is empty."
@@ -138,7 +138,10 @@ class Vectors(BaseResource):
             f"Attempting to delete {len(ids)} vector(s) from namespace"
             f" '{namespace_name}' with IDs: {ids}"
         )
-        if not all(isinstance(item_id, (str, int)) and item_id for item_id in ids):
+        if not all(
+            isinstance(item_id, (str, int)) and (item_id or item_id == 0)
+            for item_id in ids
+        ):
             raise InvalidInputError(
                 "All items in 'ids' list must be non-empty strings or integers."
             )
