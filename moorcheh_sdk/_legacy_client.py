@@ -209,7 +209,7 @@ class LegacyClientMixin:
         namespaces: list[str],
         query: str | list[float],
         top_k: int = 10,
-        threshold: float | None = None,
+        threshold: float | None = 0.7,
         kiosk_mode: bool = False,
     ) -> dict[str, Any]:
         """
@@ -221,7 +221,7 @@ class LegacyClientMixin:
             namespaces: A list of namespace names to search within.
             query: The search query (text string or vector list).
             top_k: The maximum number of results to return. Defaults to 10.
-            threshold: Minimum similarity score (0-1). Defaults to None.
+            threshold: Minimum similarity score (0-1). Defaults to 0.7.
             kiosk_mode: Enable strict filtering. Defaults to False.
 
         Returns:
