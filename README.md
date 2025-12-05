@@ -2,9 +2,9 @@
 
 <a href="https://www.moorcheh.ai/">
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/moorcheh-ai/moorcheh-python-sdk/main/assets/moorcheh-logo-white.png">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/moorcheh-ai/moorcheh-python-sdk/main/assets/moorcheh-logo.png">
-  <img alt="Fallback image description" src="https://raw.githubusercontent.com/moorcheh-ai/moorcheh-python-sdk/main/assets/moorcheh-logo.png">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/moorcheh-ai/moorcheh-python-sdk/main/assets/moorcheh-logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/moorcheh-ai/moorcheh-python-sdk/main/assets/moorcheh-logo-light.svg">
+  <img alt="Fallback image description" src="https://raw.githubusercontent.com/moorcheh-ai/moorcheh-python-sdk/main/assets/moorcheh-logo-dark.svg">
 </picture>
 </a>
 
