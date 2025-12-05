@@ -54,7 +54,7 @@ def test_search_success_vector_with_threshold(client, mocker, mock_response):
     query = [0.1] * TEST_VECTOR_DIM
     namespaces = [TEST_NAMESPACE, TEST_NAMESPACE_2]
     top_k = 3
-    threshold = 0.75
+    threshold = 0.25
     expected_response = {
         "results": [{"id": "vec1", "score": 0.8, "metadata": {}}],
         "execution_time": 0.2,
