@@ -277,6 +277,8 @@ class LegacyClientMixin:
         ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
         chat_history: list[ChatHistoryItem] | None = None,
         temperature: float = 0.7,
+        header_prompt: str | None = None,
+        footer_prompt: str | None = None,
     ) -> AnswerResponse:
         """
         [DEPRECATED] Generates an AI answer based on a search query within a namespace.
@@ -293,6 +295,10 @@ class LegacyClientMixin:
                 Each item should be a dictionary. Defaults to None.
             temperature: The sampling temperature for the LLM (0.0 to 1.0).
                 Higher values introduce more randomness. Defaults to 0.7.
+            header_prompt: Optional header prompt to be used in the LLM.
+                Defaults to None.
+            footer_prompt: Optional footer prompt to be used in the LLM.
+                Defaults to None.
 
         Returns:
             A dictionary containing the generated answer and metadata.
@@ -318,6 +324,8 @@ class LegacyClientMixin:
             ai_model=ai_model,
             chat_history=chat_history,
             temperature=temperature,
+            header_prompt=header_prompt,
+            footer_prompt=footer_prompt,
         )
 
     def delete_documents(
