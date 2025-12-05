@@ -1,8 +1,15 @@
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from ._client import MoorchehClient
+    from .resources import Answer, Documents, Namespaces, Search, Vectors
+
+    class ClientProtocol(Protocol):
+        namespaces: Namespaces
+        documents: Documents
+        vectors: Vectors
+        similarity_search: Search
+        answer: Answer
 
 
 class LegacyClientMixin:
@@ -13,7 +20,7 @@ class LegacyClientMixin:
     """
 
     def create_namespace(
-        self: "MoorchehClient",
+        self: "ClientProtocol",
         namespace_name: str,
         type: str,
         vector_dimension: int | None = None,
@@ -49,7 +56,7 @@ class LegacyClientMixin:
             namespace_name=namespace_name, type=type, vector_dimension=vector_dimension
         )
 
-    def delete_namespace(self: "MoorchehClient", namespace_name: str) -> None:
+    def delete_namespace(self: "ClientProtocol", namespace_name: str) -> None:
         """
         [DEPRECATED] Deletes a namespace and all its data.
 
@@ -66,7 +73,7 @@ class LegacyClientMixin:
         )
         self.namespaces.delete(namespace_name=namespace_name)
 
-    def list_namespaces(self: "MoorchehClient") -> dict[str, Any]:
+    def list_namespaces(self: "ClientProtocol") -> dict[str, Any]:
         """
         [DEPRECATED] Lists all available namespaces.
 
@@ -97,7 +104,7 @@ class LegacyClientMixin:
         return self.namespaces.list()
 
     def upload_documents(
-        self: "MoorchehClient", namespace_name: str, documents: list[dict[str, Any]]
+        self: "ClientProtocol", namespace_name: str, documents: list[dict[str, Any]]
     ) -> dict[str, Any]:
         """
         [DEPRECATED] Uploads text documents to a text-based namespace.
@@ -130,7 +137,7 @@ class LegacyClientMixin:
         return self.documents.upload(namespace_name=namespace_name, documents=documents)
 
     def get_documents(
-        self: "MoorchehClient", namespace_name: str, ids: list[str | int]
+        self: "ClientProtocol", namespace_name: str, ids: list[str | int]
     ) -> dict[str, Any]:
         """
         [DEPRECATED] Retrieves documents by their IDs from a text-based namespace.
@@ -164,7 +171,7 @@ class LegacyClientMixin:
         return self.documents.get(namespace_name=namespace_name, ids=ids)
 
     def upload_vectors(
-        self: "MoorchehClient", namespace_name: str, vectors: list[dict[str, Any]]
+        self: "ClientProtocol", namespace_name: str, vectors: list[dict[str, Any]]
     ) -> dict[str, Any]:
         """
         [DEPRECATED] Uploads pre-computed vectors to a vector-based namespace.
@@ -198,7 +205,7 @@ class LegacyClientMixin:
         return self.vectors.upload(namespace_name=namespace_name, vectors=vectors)
 
     def search(
-        self: "MoorchehClient",
+        self: "ClientProtocol",
         namespaces: list[str],
         query: str | list[float],
         top_k: int = 10,
@@ -248,7 +255,7 @@ class LegacyClientMixin:
         )
 
     def get_generative_answer(
-        self: "MoorchehClient",
+        self: "ClientProtocol",
         namespace: str,
         query: str,
         top_k: int = 5,
@@ -299,7 +306,7 @@ class LegacyClientMixin:
         )
 
     def delete_documents(
-        self: "MoorchehClient", namespace_name: str, ids: list[str | int]
+        self: "ClientProtocol", namespace_name: str, ids: list[str | int]
     ) -> dict[str, Any]:
         """
         [DEPRECATED] Deletes documents by their IDs from a text-based namespace.
@@ -329,7 +336,7 @@ class LegacyClientMixin:
         return self.documents.delete(namespace_name=namespace_name, ids=ids)
 
     def delete_vectors(
-        self: "MoorchehClient", namespace_name: str, ids: list[str | int]
+        self: "ClientProtocol", namespace_name: str, ids: list[str | int]
     ) -> dict[str, Any]:
         """
         [DEPRECATED] Deletes vectors by their IDs from a vector-based namespace.
