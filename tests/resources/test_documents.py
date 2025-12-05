@@ -133,3 +133,48 @@ def test_delete_documents_namespace_not_found(client, mocker, mock_response):
     with pytest.raises(NamespaceNotFound, match=error_text):
         client.documents.delete(namespace_name=TEST_NAMESPACE, ids=ids)
     client._mock_httpx_instance.request.assert_called_once()
+
+
+def test_get_documents_success(client, mocker, mock_response):
+    """Test successful retrieval of documents."""
+    ids_to_get = [TEST_DOC_ID_1, TEST_DOC_ID_2]
+    expected_response = {
+        "documents": [
+            {"id": TEST_DOC_ID_1, "text": "First doc", "metadata": {}},
+            {"id": TEST_DOC_ID_2, "text": "Second doc", "metadata": {}},
+        ]
+    }
+    mock_resp = mock_response(200, json_data=expected_response)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    result = client.documents.get(namespace_name=TEST_NAMESPACE, ids=ids_to_get)
+
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="POST",
+        url=f"/namespaces/{TEST_NAMESPACE}/documents/get",
+        json={"ids": ids_to_get},
+        params=None,
+    )
+    assert result == expected_response
+
+
+@pytest.mark.parametrize(
+    "invalid_ids", [None, [], ["id1", ""], ["id1", None], [123, {}], "not a list"]
+)
+def test_get_documents_invalid_input_client_side(client, invalid_ids):
+    """Test client-side validation for get_documents IDs."""
+    with pytest.raises(InvalidInputError):
+        client.documents.get(namespace_name=TEST_NAMESPACE, ids=invalid_ids)
+    client._mock_httpx_instance.request.assert_not_called()
+
+
+def test_get_documents_namespace_not_found(client, mocker, mock_response):
+    """Test getting documents from a non-existent namespace."""
+    ids = [TEST_DOC_ID_1]
+    error_text = f"Namespace '{TEST_NAMESPACE}' not found."
+    mock_resp = mock_response(404, text_data=error_text)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    with pytest.raises(NamespaceNotFound, match=error_text):
+        client.documents.get(namespace_name=TEST_NAMESPACE, ids=ids)
+    client._mock_httpx_instance.request.assert_called_once()

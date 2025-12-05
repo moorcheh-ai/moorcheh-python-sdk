@@ -125,11 +125,6 @@ class Documents(BaseResource):
             APIError: For other API errors.
             MoorchehError: For network issues.
         """
-        logger.info(
-            f"Attempting to get {len(ids)} document(s) from namespace"
-            f" '{namespace_name}'..."
-        )
-
         if not namespace_name or not isinstance(namespace_name, str):
             raise InvalidInputError("'namespace_name' must be a non-empty string.")
         if not isinstance(ids, list) or not ids:
@@ -144,6 +139,11 @@ class Documents(BaseResource):
             raise InvalidInputError(
                 "All items in 'ids' list must be non-empty strings or integers."
             )
+
+        logger.info(
+            f"Attempting to get {len(ids)} document(s) from namespace"
+            f" '{namespace_name}'..."
+        )
 
         endpoint = f"/namespaces/{namespace_name}/documents/get"
         payload = {"ids": ids}
