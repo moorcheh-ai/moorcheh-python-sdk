@@ -58,7 +58,8 @@ testpaths = [
     "tests",
 ]
 filterwarnings = [
-    "always::DeprecationWarning",
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning"
 ]
 
 # Optional: Configure Ruff

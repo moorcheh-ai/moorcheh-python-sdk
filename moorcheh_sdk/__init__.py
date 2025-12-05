@@ -1,4 +1,4 @@
-from ._client import MoorchehClient
+from ._client import AsyncMoorchehClient, MoorchehClient
 from ._version import __version__
 from .exceptions import (
     APIError,
@@ -10,6 +10,7 @@ from .exceptions import (
 )
 
 __all__ = [
+    "AsyncMoorchehClient",
     "MoorchehClient",
     "MoorchehError",
     "AuthenticationError",
