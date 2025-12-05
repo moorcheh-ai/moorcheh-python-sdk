@@ -1,5 +1,7 @@
+from typing import cast
+
 from ..exceptions import APIError, InvalidInputError
-from ..types import JSON
+from ..types import Vector, VectorDeleteResponse, VectorUploadResponse
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -7,7 +9,9 @@ logger = setup_logging(__name__)
 
 
 class Vectors(BaseResource):
-    def upload(self, namespace_name: str, vectors: list[JSON]) -> JSON:
+    def upload(
+        self, namespace_name: str, vectors: list[Vector]
+    ) -> VectorUploadResponse:
         """
         Uploads pre-computed vectors to a vector-based namespace.
 
@@ -100,9 +104,9 @@ class Vectors(BaseResource):
             logger.warning(
                 f"Upload vectors encountered errors: {response_data.get('errors')}"
             )
-        return response_data
+        return cast(VectorUploadResponse, response_data)
 
-    def delete(self, namespace_name: str, ids: list[str | int]) -> JSON:
+    def delete(self, namespace_name: str, ids: list[str | int]) -> VectorDeleteResponse:
         """
         Deletes vectors by their IDs from a vector-based namespace.
 
@@ -173,4 +177,4 @@ class Vectors(BaseResource):
             logger.warning(
                 f"Delete vectors encountered errors: {response_data.get('errors')}"
             )
-        return response_data
+        return cast(VectorDeleteResponse, response_data)

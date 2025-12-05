@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Any, cast
 
 from ..exceptions import APIError, InvalidInputError
-from ..types import JSON
+from ..types import SearchResponse
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -16,7 +16,7 @@ class Search(BaseResource):
         top_k: int = 10,
         threshold: float | None = 0.7,
         kiosk_mode: bool = False,
-    ) -> JSON:
+    ) -> SearchResponse:
         """
         Performs semantic search across namespaces.
 
@@ -105,4 +105,4 @@ class Search(BaseResource):
         logger.debug(
             f"Search results: {response_data}"
         )  # Log full results at debug level
-        return response_data
+        return cast(SearchResponse, response_data)
