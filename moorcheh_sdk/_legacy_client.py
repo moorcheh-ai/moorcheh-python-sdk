@@ -242,7 +242,7 @@ class LegacyClientMixin:
         """
         warnings.warn(
             "search is deprecated and will be removed in a future version. "
-            "Use client.search.query instead.",
+            "Use client.similarity_search.query instead.",
             DeprecationWarning,
             stacklevel=2,
         )
