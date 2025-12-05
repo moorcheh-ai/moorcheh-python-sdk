@@ -77,16 +77,14 @@ class Search(BaseResource):
 
         payload: dict[str, Any] = {
             "namespaces": namespaces,
-            "query": query,  # Keep original query type
+            "query": query,
             "top_k": top_k,
             "kiosk_mode": kiosk_mode,
         }
-        if threshold is not None:
+        if kiosk_mode and threshold is not None:
             payload["threshold"] = threshold
 
-        logger.debug(
-            f"Search payload: {payload}"
-        )  # Be careful logging query if it could be sensitive/large
+        logger.debug(f"Search payload: {payload}")
 
         response_data = self._client._request(
             method="POST", endpoint="/search", json_data=payload, expected_status=200
@@ -102,7 +100,5 @@ class Search(BaseResource):
             f"Search completed successfully. Found {result_count} result(s). Execution"
             f" time: {exec_time}s."
         )
-        logger.debug(
-            f"Search results: {response_data}"
-        )  # Log full results at debug level
+        logger.debug(f"Search results: {response_data}")
         return cast(SearchResponse, response_data)
