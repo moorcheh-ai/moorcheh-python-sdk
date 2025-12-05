@@ -51,6 +51,7 @@ class MoorchehClient(SyncAPIClient, LegacyClientMixin):
         api_key: str | None = None,
         base_url: str | None = None,
         timeout: Timeout = 30.0,
+        max_retries: int = 3,
     ):
         """
         Initializes the MoorchehClient.
@@ -92,6 +93,7 @@ class MoorchehClient(SyncAPIClient, LegacyClientMixin):
             api_key=self.api_key,
             timeout=self.timeout,
             custom_headers={"User-Agent": f"moorcheh-python-sdk/{sdk_version}"},
+            max_retries=max_retries,
         )
 
         logger.info(
@@ -283,6 +285,7 @@ class AsyncMoorchehClient(AsyncAPIClient):
         api_key: str | None = None,
         base_url: str | None = None,
         timeout: Timeout = 30.0,
+        max_retries: int = 3,
     ):
         self.api_key = api_key or os.environ.get("MOORCHEH_API_KEY")
         if not self.api_key:
@@ -303,6 +306,7 @@ class AsyncMoorchehClient(AsyncAPIClient):
             api_key=self.api_key,
             timeout=self.timeout,
             custom_headers={"User-Agent": f"moorcheh-python-sdk/{sdk_version}"},
+            max_retries=max_retries,
         )
 
     def __repr__(self) -> str:
