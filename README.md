@@ -42,7 +42,7 @@ git clone https://github.com/moorcheh-ai/moorcheh-python-sdk.git
 
 cd moorcheh-python-sdk
 
-uv sync 
+uv sync
 ```
 
 ## Authentication
