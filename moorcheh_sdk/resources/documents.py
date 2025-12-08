@@ -8,6 +8,7 @@ from ..types import (
     DocumentUploadResponse,
 )
 from ..utils.constants import INVALID_ID_CHARS
+from ..utils.decorators import required_args
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -15,6 +16,10 @@ logger = setup_logging(__name__)
 
 
 class Documents(BaseResource):
+    @required_args(
+        ["namespace_name", "documents"],
+        types={"namespace_name": str, "documents": list},
+    )
     def upload(
         self, namespace_name: str, documents: list[Document]
     ) -> DocumentUploadResponse:
@@ -47,12 +52,6 @@ class Documents(BaseResource):
             APIError: For other API errors.
             MoorchehError: For network issues.
         """
-        if not namespace_name or not isinstance(namespace_name, str):
-            raise InvalidInputError("'namespace_name' must be a non-empty string.")
-        if not isinstance(documents, list) or not documents:
-            raise InvalidInputError(
-                "'documents' must be a non-empty list of dictionaries."
-            )
 
         logger.info(
             f"Attempting to upload {len(documents)} documents to namespace"
@@ -105,6 +104,9 @@ class Documents(BaseResource):
         )
         return cast(DocumentUploadResponse, response_data)
 
+    @required_args(
+        ["namespace_name", "ids"], types={"namespace_name": str, "ids": list}
+    )
     def get(self, namespace_name: str, ids: list[str | int]) -> DocumentGetResponse:
         """
         Retrieves documents by their IDs from a text-based namespace.
@@ -134,12 +136,6 @@ class Documents(BaseResource):
             APIError: For other API errors.
             MoorchehError: For network issues.
         """
-        if not namespace_name or not isinstance(namespace_name, str):
-            raise InvalidInputError("'namespace_name' must be a non-empty string.")
-        if not isinstance(ids, list) or not ids:
-            raise InvalidInputError(
-                "'ids' must be a non-empty list of strings or integers."
-            )
         if len(ids) > 100:
             raise InvalidInputError(
                 "Maximum of 100 document IDs can be requested per call."
@@ -174,6 +170,9 @@ class Documents(BaseResource):
         )
         return cast(DocumentGetResponse, response_data)
 
+    @required_args(
+        ["namespace_name", "ids"], types={"namespace_name": str, "ids": list}
+    )
     def delete(
         self, namespace_name: str, ids: list[str | int]
     ) -> DocumentDeleteResponse:
@@ -201,13 +200,6 @@ class Documents(BaseResource):
             APIError: For other API errors.
             MoorchehError: For network issues.
         """
-        if not namespace_name or not isinstance(namespace_name, str):
-            raise InvalidInputError("'namespace_name' must be a non-empty string.")
-        if not isinstance(ids, list) or not ids:
-            raise InvalidInputError(
-                "'ids' must be a non-empty list of strings or integers."
-            )
-
         logger.info(
             f"Attempting to delete {len(ids)} document(s) from namespace"
             f" '{namespace_name}' with IDs: {ids}"

@@ -76,12 +76,12 @@ def test_generate_answer_with_prompts(client, mocker, mock_response):
 @pytest.mark.parametrize(
     "ns, q, tk, model, temp, history, msg",
     [
-        ("", "q", 5, "m", 0.5, [], "'namespace' must be a non-empty string"),
-        (None, "q", 5, "m", 0.5, [], "'namespace' must be a non-empty string"),
-        ("ns", "", 5, "m", 0.5, [], "'query' must be a non-empty string"),
+        ("", "q", 5, "m", 0.5, [], "Argument 'namespace' cannot be empty."),
+        (None, "q", 5, "m", 0.5, [], "Argument 'namespace' cannot be None."),
+        ("ns", "", 5, "m", 0.5, [], "Argument 'query' cannot be empty."),
         ("ns", "q", 0, "m", 0.5, [], "'top_k' must be a positive integer"),
         ("ns", "q", -1, "m", 0.5, [], "'top_k' must be a positive integer"),
-        ("ns", "q", 5, "", 0.5, [], "'ai_model' must be a non-empty string"),
+        ("ns", "q", 5, "", 0.5, [], "Argument 'ai_model' cannot be empty."),
         (
             "ns",
             "q",

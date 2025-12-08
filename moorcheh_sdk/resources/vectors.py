@@ -2,6 +2,7 @@ from typing import cast
 
 from ..exceptions import APIError, InvalidInputError
 from ..types import Vector, VectorDeleteResponse, VectorUploadResponse
+from ..utils.decorators import required_args
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -9,6 +10,9 @@ logger = setup_logging(__name__)
 
 
 class Vectors(BaseResource):
+    @required_args(
+        ["namespace_name", "vectors"], types={"namespace_name": str, "vectors": list}
+    )
     def upload(
         self, namespace_name: str, vectors: list[Vector]
     ) -> VectorUploadResponse:
@@ -42,12 +46,6 @@ class Vectors(BaseResource):
             APIError: For other API errors.
             MoorchehError: For network issues.
         """
-        if not namespace_name or not isinstance(namespace_name, str):
-            raise InvalidInputError("'namespace_name' must be a non-empty string.")
-        if not isinstance(vectors, list) or not vectors:
-            raise InvalidInputError(
-                "'vectors' must be a non-empty list of dictionaries."
-            )
 
         logger.info(
             f"Attempting to upload {len(vectors)} vectors to namespace"
@@ -106,6 +104,9 @@ class Vectors(BaseResource):
             )
         return cast(VectorUploadResponse, response_data)
 
+    @required_args(
+        ["namespace_name", "ids"], types={"namespace_name": str, "ids": list}
+    )
     def delete(self, namespace_name: str, ids: list[str | int]) -> VectorDeleteResponse:
         """
         Deletes vectors by their IDs from a vector-based namespace.
@@ -131,12 +132,6 @@ class Vectors(BaseResource):
             APIError: For other API errors.
             MoorchehError: For network issues.
         """
-        if not namespace_name or not isinstance(namespace_name, str):
-            raise InvalidInputError("'namespace_name' must be a non-empty string.")
-        if not isinstance(ids, list) or not ids:
-            raise InvalidInputError(
-                "'ids' must be a non-empty list of strings or integers."
-            )
 
         logger.info(
             f"Attempting to delete {len(ids)} vector(s) from namespace"

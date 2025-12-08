@@ -2,6 +2,7 @@ from typing import Any, cast
 
 from ..exceptions import APIError, InvalidInputError
 from ..types import AnswerResponse, ChatHistoryItem
+from ..utils.decorators import required_args
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -9,6 +10,16 @@ logger = setup_logging(__name__)
 
 
 class Answer(BaseResource):
+    @required_args(
+        ["namespace", "query", "top_k", "ai_model", "temperature"],
+        types={
+            "namespace": str,
+            "query": str,
+            "top_k": int,
+            "ai_model": str,
+            "temperature": (int, float),
+        },
+    )
     def generate(
         self,
         namespace: str,
@@ -64,16 +75,9 @@ class Answer(BaseResource):
             "Attempting to get generative answer for query in namespace"
             f" '{namespace}'..."
         )
-
-        if not namespace or not isinstance(namespace, str):
-            raise InvalidInputError("'namespace' must be a non-empty string.")
-        if not query or not isinstance(query, str):
-            raise InvalidInputError("'query' must be a non-empty string.")
-        if not isinstance(top_k, int) or top_k <= 0:
+        if top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
-        if not isinstance(ai_model, str) or not ai_model:
-            raise InvalidInputError("'ai_model' must be a non-empty string.")
-        if not isinstance(temperature, (int, float)) or not (0 <= temperature <= 1):
+        if not (0 <= temperature <= 1):
             raise InvalidInputError(
                 "'temperature' must be a number between 0.0 and 1.0."
             )
