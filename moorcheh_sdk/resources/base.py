@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .._client import MoorchehClient
+    from .._client import AsyncMoorchehClient, MoorchehClient
 
 
 class BaseResource:
@@ -18,6 +18,24 @@ class BaseResource:
 
         Args:
             client: The MoorchehClient instance to use for requests.
+        """
+        self._client = client
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(client={self._client})"
+
+
+class AsyncBaseResource:
+    """
+    Base class for all Async Moorcheh SDK resources.
+    """
+
+    def __init__(self, client: "AsyncMoorchehClient") -> None:
+        """
+        Initialize the resource with a client instance.
+
+        Args:
+            client: The AsyncMoorchehClient instance to use for requests.
         """
         self._client = client
 
