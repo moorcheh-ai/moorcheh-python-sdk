@@ -4,7 +4,7 @@ from ..exceptions import APIError, InvalidInputError
 from ..types import AnswerResponse, ChatHistoryItem
 from ..utils.decorators import required_args
 from ..utils.logging import setup_logging
-from .base import BaseResource
+from .base import AsyncBaseResource, BaseResource
 
 logger = setup_logging(__name__)
 
@@ -106,7 +106,95 @@ class Answer(BaseResource):
             )
 
         logger.info(
-            "Successfully received generative answer. Model used:"
-            f" {response_data.get('model')}"
+            f"Answer generation completed successfully. Answer length: {len(response_data.get('answer', ''))}"
+        )
+        return cast(AnswerResponse, response_data)
+
+
+class AsyncAnswer(AsyncBaseResource):
+    @required_args(
+        ["namespace", "query", "top_k", "ai_model", "temperature"],
+        types={
+            "namespace": str,
+            "query": str,
+            "top_k": int,
+            "ai_model": str,
+            "temperature": (int, float),
+        },
+    )
+    async def generate(
+        self,
+        namespace: str,
+        query: str,
+        top_k: int = 10,
+        ai_model: str = "gpt-4o",
+        temperature: float = 0.5,
+    ) -> AnswerResponse:
+        """
+        Generates an answer to a query based on the content of a namespace asynchronously.
+
+        Args:
+            namespace: The name of the namespace to use as context.
+            query: The question or query to answer.
+            top_k: The number of relevant documents to retrieve for context (default: 10).
+            ai_model: The AI model to use for generation (default: "gpt-4o").
+            temperature: The creativity of the model (0.0 to 1.0, default: 0.5).
+
+        Returns:
+            A dictionary containing the generated answer and source documents.
+
+            Structure:
+            {
+                "answer": str,
+                "sources": [
+                    {
+                        "id": str | int,
+                        "text": str,
+                        "metadata": dict,
+                        "score": float
+                    }
+                ],
+                "execution_time": float
+            }
+
+        Raises:
+            InvalidInputError: If input is invalid.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+        """
+        if top_k <= 0:
+            raise InvalidInputError("'top_k' must be a positive integer.")
+
+        if not (0 <= temperature <= 1):
+            raise InvalidInputError("'temperature' must be between 0.0 and 1.0.")
+
+        logger.info(
+            f"Attempting to generate answer for query '{query}' in namespace"
+            f" '{namespace}' (model={ai_model})..."
+        )
+
+        payload = {
+            "namespace": namespace,
+            "query": query,
+            "top_k": top_k,
+            "ai_model": ai_model,
+            "temperature": temperature,
+        }
+
+        response_data = await self._client._request(
+            method="POST",
+            endpoint="/answer",
+            json_data=payload,
+            expected_status=200,
+        )
+
+        if not isinstance(response_data, dict):
+            logger.error("Answer response was not a dictionary.")
+            raise APIError(message="Unexpected response format from answer endpoint.")
+
+        logger.info(
+            f"Answer generation completed successfully. Answer length: {len(response_data.get('answer', ''))}"
         )
         return cast(AnswerResponse, response_data)

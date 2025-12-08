@@ -4,7 +4,7 @@ from ..exceptions import APIError, InvalidInputError
 from ..types import NamespaceCreateResponse, NamespaceListResponse
 from ..utils.decorators import required_args
 from ..utils.logging import setup_logging
-from .base import BaseResource
+from .base import AsyncBaseResource, BaseResource
 
 logger = setup_logging(__name__)
 
@@ -150,4 +150,131 @@ class Namespaces(BaseResource):
         count = len(response_data.get("namespaces", []))
         logger.info(f"Successfully listed {count} namespace(s).")
         logger.debug(f"List namespaces response data: {response_data}")
+        return cast(NamespaceListResponse, response_data)
+
+
+class AsyncNamespaces(AsyncBaseResource):
+    @required_args(
+        ["namespace_name", "type"], types={"namespace_name": str, "type": str}
+    )
+    async def create(
+        self,
+        namespace_name: str,
+        type: str,
+        vector_dimension: int | None = None,
+    ) -> NamespaceCreateResponse:
+        """
+        Creates a new namespace asynchronously.
+
+        Args:
+            namespace_name: A unique name for the namespace.
+            type: The type of namespace ("text" or "vector").
+            vector_dimension: The dimension of vectors (required if type="vector").
+
+        Returns:
+            A dictionary containing the created namespace details.
+
+        Raises:
+            InvalidInputError: If input validation fails.
+            ConflictError: If the namespace already exists (409).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+        """
+        logger.info(
+            f"Attempting to create namespace '{namespace_name}' (type={type})..."
+        )
+
+        if type not in ["text", "vector"]:
+            raise InvalidInputError("Namespace type must be 'text' or 'vector'.")
+
+        if type == "vector":
+            if not isinstance(vector_dimension, int) or vector_dimension <= 0:
+                raise InvalidInputError(
+                    "Vector dimension must be a positive integer for type 'vector'."
+                )
+        elif vector_dimension is not None:
+            raise InvalidInputError(
+                "Vector dimension should not be provided for type 'text'."
+            )
+
+        payload = {
+            "namespace_name": namespace_name,
+            "type": type,
+            "vector_dimension": vector_dimension,
+        }
+
+        response_data = await self._client._request(
+            method="POST",
+            endpoint="/namespaces",
+            json_data=payload,
+            expected_status=201,
+        )
+
+        logger.info(f"Namespace '{namespace_name}' created successfully.")
+        return cast(NamespaceCreateResponse, response_data)
+
+    @required_args(["namespace_name"], types={"namespace_name": str})
+    async def delete(self, namespace_name: str) -> None:
+        """
+        Deletes a namespace and all its data asynchronously.
+
+        Args:
+            namespace_name: The name of the namespace to delete.
+
+        Raises:
+            InvalidInputError: If namespace_name is invalid.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+        """
+        logger.info(f"Attempting to delete namespace '{namespace_name}'...")
+
+        await self._client._request(
+            method="DELETE",
+            endpoint=f"/namespaces/{namespace_name}",
+            expected_status=200,
+        )
+
+        logger.info(f"Namespace '{namespace_name}' deleted successfully.")
+
+    async def list(self) -> NamespaceListResponse:
+        """
+        Lists all available namespaces asynchronously.
+
+        Returns:
+            A dictionary containing the list of namespaces.
+
+        Raises:
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+        """
+        logger.info("Attempting to list namespaces...")
+        response_data = await self._client._request(
+            method="GET", endpoint="/namespaces", expected_status=200
+        )
+
+        if not isinstance(response_data, dict):
+            logger.error("List namespaces response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from list namespaces endpoint."
+            )
+
+        if "namespaces" not in response_data or not isinstance(
+            response_data["namespaces"], list
+        ):
+            logger.error(
+                "List namespaces response missing 'namespaces' key or it is not a list."
+            )
+            raise APIError(
+                message=(
+                    "Invalid response structure: 'namespaces' key missing or not a list."
+                )
+            )
+
+        logger.info(
+            f"Successfully listed {len(response_data['namespaces'])} namespaces."
+        )
         return cast(NamespaceListResponse, response_data)
