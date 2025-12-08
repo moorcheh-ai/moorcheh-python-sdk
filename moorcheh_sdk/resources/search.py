@@ -2,6 +2,7 @@ from typing import Any, cast
 
 from ..exceptions import APIError, InvalidInputError
 from ..types import SearchResponse
+from ..utils.decorators import required_args
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -9,6 +10,15 @@ logger = setup_logging(__name__)
 
 
 class Search(BaseResource):
+    @required_args(
+        ["namespaces", "query", "top_k", "kiosk_mode"],
+        types={
+            "namespaces": list,
+            "query": (str, list),
+            "top_k": int,
+            "kiosk_mode": bool,
+        },
+    )
     def query(
         self,
         namespaces: list[str],
@@ -50,15 +60,11 @@ class Search(BaseResource):
             APIError: For other API errors.
             MoorchehError: For network issues.
         """
-        if not isinstance(namespaces, list) or not namespaces:
-            raise InvalidInputError("'namespaces' must be a non-empty list of strings.")
         if not all(isinstance(ns, str) and ns for ns in namespaces):
             raise InvalidInputError(
                 "All items in 'namespaces' list must be non-empty strings."
             )
-        if not query:
-            raise InvalidInputError("'query' cannot be empty.")
-        if not isinstance(top_k, int) or top_k <= 0:
+        if top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
         if threshold is not None and (
             not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
@@ -66,8 +72,6 @@ class Search(BaseResource):
             raise InvalidInputError(
                 "'threshold' must be a number between 0 and 1, or None."
             )
-        if not isinstance(kiosk_mode, bool):
-            raise InvalidInputError("'kiosk_mode' must be a boolean.")
 
         query_type = "vector" if isinstance(query, list) else "text"
         logger.info(

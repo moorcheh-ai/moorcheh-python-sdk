@@ -2,6 +2,7 @@ from typing import Any, cast
 
 from ..exceptions import APIError, InvalidInputError
 from ..types import NamespaceCreateResponse, NamespaceListResponse
+from ..utils.decorators import required_args
 from ..utils.logging import setup_logging
 from .base import BaseResource
 
@@ -9,6 +10,9 @@ logger = setup_logging(__name__)
 
 
 class Namespaces(BaseResource):
+    @required_args(
+        ["namespace_name", "type"], types={"namespace_name": str, "type": str}
+    )
     def create(
         self, namespace_name: str, type: str, vector_dimension: int | None = None
     ) -> NamespaceCreateResponse:
@@ -41,9 +45,6 @@ class Namespaces(BaseResource):
         logger.info(
             f"Attempting to create namespace '{namespace_name}' of type '{type}'..."
         )
-        # Client-side validation
-        if not namespace_name or not isinstance(namespace_name, str):
-            raise InvalidInputError("'namespace_name' must be a non-empty string.")
         if type not in ["text", "vector"]:
             raise InvalidInputError("Namespace type must be 'text' or 'vector'.")
         if type == "vector":
@@ -79,6 +80,7 @@ class Namespaces(BaseResource):
         )
         return cast(NamespaceCreateResponse, response_data)
 
+    @required_args(["namespace_name"], types={"namespace_name": str})
     def delete(self, namespace_name: str) -> None:
         """
         Deletes a namespace and all its data.
@@ -94,8 +96,6 @@ class Namespaces(BaseResource):
             MoorchehError: For network issues.
         """
         logger.info(f"Attempting to delete namespace '{namespace_name}'...")
-        if not namespace_name or not isinstance(namespace_name, str):
-            raise InvalidInputError("'namespace_name' must be a non-empty string.")
 
         endpoint = f"/namespaces/{namespace_name}"
         # API returns 200 with body now, not 204
