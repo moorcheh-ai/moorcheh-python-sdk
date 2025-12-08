@@ -179,7 +179,7 @@ class AsyncAnswer(AsyncBaseResource):
             "namespace": namespace,
             "query": query,
             "top_k": top_k,
-            "ai_model": ai_model,
+            "aiModel": ai_model,
             "temperature": temperature,
         }
 
