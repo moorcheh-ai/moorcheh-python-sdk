@@ -101,7 +101,7 @@ class Search(BaseResource):
         result_count = len(response_data.get("results", []))
         exec_time = response_data.get("execution_time", "N/A")
         logger.info(
-            f"Search completed successfully. Found {len(response_data.get('results', []))} results."
+            f"Search completed successfully. Found {result_count} results. Execution time: {exec_time} seconds."
         )
         return cast(SearchResponse, response_data)
 
