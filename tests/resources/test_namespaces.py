@@ -84,8 +84,8 @@ def test_create_namespace_conflict(client, mocker, mock_response):
 @pytest.mark.parametrize(
     "name, ns_type, dim, expected_error_msg",
     [
-        ("", "text", None, "'namespace_name' must be a non-empty string"),
-        (None, "text", None, "'namespace_name' must be a non-empty string"),
+        ("", "text", None, "Argument 'namespace_name' cannot be empty."),
+        (None, "text", None, "Argument 'namespace_name' cannot be None."),
         ("test", "invalid_type", None, "Namespace type must be 'text' or 'vector'"),
         (
             "test",
@@ -250,11 +250,20 @@ def test_delete_namespace_not_found(client, mocker, mock_response):
     client._mock_httpx_instance.request.assert_called_once()
 
 
-@pytest.mark.parametrize("invalid_name", ["", None, 123])
-def test_delete_namespace_invalid_name_client_side(client, invalid_name):
+@pytest.mark.parametrize(
+    "invalid_name, expected_error",
+    [
+        ("", "Argument 'namespace_name' cannot be empty."),
+        (None, "Argument 'namespace_name' cannot be None."),
+        (123, "Argument 'namespace_name' must be of type <class 'str'>."),
+    ],
+)
+def test_delete_namespace_invalid_name_client_side(
+    client, invalid_name, expected_error
+):
     """Test client-side validation for delete_namespace name."""
-    with pytest.raises(
-        InvalidInputError, match="'namespace_name' must be a non-empty string"
-    ):
+    import re
+
+    with pytest.raises(InvalidInputError, match=re.escape(expected_error)):
         client.namespaces.delete(invalid_name)
     client._mock_httpx_instance.request.assert_not_called()
