@@ -1,15 +1,18 @@
 import inspect
 from collections.abc import Callable, Sequence
 from functools import wraps
-from typing import Any
+from typing import ParamSpec, TypeVar
 
 from ..exceptions import InvalidInputError
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 def required_args(
     args: Sequence[str],
     types: dict[str, type | tuple[type, ...]] | None = None,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
     Decorator to enforce that specific arguments are provided, not None, and optionally of a specific type.
 
@@ -20,9 +23,9 @@ def required_args(
         types: A dictionary mapping argument names to their expected types.
     """
 
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @wraps(func)
-        def wrapper(*func_args: Any, **func_kwargs: Any) -> Any:
+        def wrapper(*func_args: P.args, **func_kwargs: P.kwargs) -> R:
             sig = inspect.signature(func)
             try:
                 bound = sig.bind(*func_args, **func_kwargs)
