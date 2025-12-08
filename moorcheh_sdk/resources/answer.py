@@ -127,7 +127,7 @@ class AsyncAnswer(AsyncBaseResource):
         namespace: str,
         query: str,
         top_k: int = 10,
-        ai_model: str = "gpt-4o",
+        ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
         temperature: float = 0.5,
     ) -> AnswerResponse:
         """
