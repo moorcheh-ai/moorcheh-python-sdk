@@ -7,6 +7,7 @@ from ..types import (
     DocumentGetResponse,
     DocumentUploadResponse,
 )
+from ..utils.batching import chunk_iterable
 from ..utils.constants import INVALID_ID_CHARS
 from ..utils.decorators import required_args
 from ..utils.logging import setup_logging
@@ -83,26 +84,32 @@ class Documents(BaseResource):
                 )
 
         endpoint = f"/namespaces/{namespace_name}/documents"
-        payload = {"documents": documents}
-        logger.debug(f"Upload documents payload size: {len(documents)}")
 
-        # Expecting 202 Accepted
-        response_data = self._client._request(
-            "POST", endpoint, json_data=payload, expected_status=202
-        )
+        all_submitted_ids = []
 
-        if not isinstance(response_data, dict):
-            logger.error("Upload documents response was not a dictionary.")
-            raise APIError(
-                message="Unexpected response format after uploading documents."
+        for batch in chunk_iterable(documents, 100):
+            payload = {"documents": batch}
+            logger.debug(f"Uploading batch of {len(batch)} documents...")
+
+            # Expecting 202 Accepted
+            response_data = self._client._request(
+                "POST", endpoint, json_data=payload, expected_status=202
             )
 
-        submitted_count = len(response_data.get("submitted_ids", []))
+            if not isinstance(response_data, dict):
+                logger.error("Upload documents response was not a dictionary.")
+                raise APIError(
+                    message="Unexpected response format after uploading documents."
+                )
+
+            all_submitted_ids.extend(response_data.get("submitted_ids", []))
+
         logger.info(
-            f"Successfully queued {submitted_count} documents for upload to"
-            f" '{namespace_name}'. Status: {response_data.get('status')}"
+            f"Successfully queued {len(all_submitted_ids)} documents for upload to"
+            f" '{namespace_name}'."
         )
-        return cast(DocumentUploadResponse, response_data)
+
+        return {"status": "queued", "submitted_ids": all_submitted_ids}
 
     @required_args(
         ["namespace_name", "ids"], types={"namespace_name": str, "ids": list}
@@ -280,18 +287,24 @@ class AsyncDocuments(AsyncBaseResource):
             f" '{namespace_name}'..."
         )
 
-        response_data = await self._client._request(
-            method="POST",
-            endpoint=f"/namespaces/{namespace_name}/documents",
-            json_data={"documents": documents},
-            expected_status=202,
-        )
+        all_submitted_ids = []
+
+        for batch in chunk_iterable(documents, 100):
+            response_data = await self._client._request(
+                method="POST",
+                endpoint=f"/namespaces/{namespace_name}/documents",
+                json_data={"documents": batch},
+                expected_status=202,
+            )
+
+            if isinstance(response_data, dict):
+                all_submitted_ids.extend(response_data.get("submitted_ids", []))
 
         logger.info(
-            f"Successfully queued {len(documents)} documents for upload to"
+            f"Successfully queued {len(all_submitted_ids)} documents for upload to"
             f" '{namespace_name}'."
         )
-        return cast(DocumentUploadResponse, response_data)
+        return {"status": "queued", "submitted_ids": all_submitted_ids}
 
     @required_args(
         ["namespace_name", "ids"], types={"namespace_name": str, "ids": list}
