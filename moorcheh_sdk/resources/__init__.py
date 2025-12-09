@@ -1,7 +1,18 @@
-from .answer import Answer
-from .documents import Documents
-from .namespaces import Namespaces
-from .search import Search
-from .vectors import Vectors
+from .answer import Answer, AsyncAnswer
+from .documents import AsyncDocuments, Documents
+from .namespaces import AsyncNamespaces, Namespaces
+from .search import AsyncSearch, Search
+from .vectors import AsyncVectors, Vectors
 
-__all__ = ["Namespaces", "Documents", "Vectors", "Search", "Answer"]
+__all__ = [
+    "Namespaces",
+    "AsyncNamespaces",
+    "Documents",
+    "AsyncDocuments",
+    "Vectors",
+    "AsyncVectors",
+    "Search",
+    "AsyncSearch",
+    "Answer",
+    "AsyncAnswer",
+]

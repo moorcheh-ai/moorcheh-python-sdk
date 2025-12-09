@@ -1,77 +1,147 @@
-import os
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 
 from moorcheh_sdk import AsyncMoorchehClient
-from tests.constants import DUMMY_API_KEY
-
-# --- Async Fixtures ---
+from moorcheh_sdk.resources.answer import AsyncAnswer
+from moorcheh_sdk.resources.documents import AsyncDocuments
+from moorcheh_sdk.resources.namespaces import AsyncNamespaces
+from moorcheh_sdk.resources.search import AsyncSearch
+from moorcheh_sdk.resources.vectors import AsyncVectors
 
 
 @pytest.fixture
-def anyio_backend():
-    return "asyncio"
+def client():
+    return AsyncMoorchehClient(api_key="test_key")
 
 
-@pytest.fixture(scope="function")
-def mock_httpx_async_client(mocker):
-    """Fixture to mock the internal httpx.AsyncClient."""
-    mock_client_instance = mocker.MagicMock(spec=httpx.AsyncClient)
-    mock_client_instance.request = mocker.AsyncMock()
-    mock_client_instance.aclose = mocker.AsyncMock()
-    mocker.patch("httpx.AsyncClient", return_value=mock_client_instance)
-    return mock_client_instance
+@pytest.mark.asyncio
+async def test_client_initialization(client):
+    assert client.api_key == "test_key"
+    assert client.base_url == "https://api.moorcheh.ai/v1"
+    assert isinstance(client.namespaces, AsyncNamespaces)
+    assert isinstance(client.documents, AsyncDocuments)
+    assert isinstance(client.vectors, AsyncVectors)
+    assert isinstance(client.similarity_search, AsyncSearch)
+    assert isinstance(client.answer, AsyncAnswer)
 
 
-@pytest.fixture(scope="function")
-async def async_client(mock_httpx_async_client):
-    """Fixture to provide an AsyncMoorchehClient instance with a mocked httpx client."""
-    with patch.dict(os.environ, {}, clear=True):
-        async with AsyncMoorchehClient(api_key=DUMMY_API_KEY) as instance:
-            instance._mock_httpx_instance = mock_httpx_async_client
-            yield instance
+@pytest.mark.asyncio
+async def test_namespaces_list(client):
+    mock_response = {
+        "namespaces": [
+            {
+                "namespace_name": "test",
+                "type": "text",
+                "itemCount": 0,
+                "vector_dimension": None,
+            }
+        ],
+        "execution_time": 0.1,
+    }
 
-
-@pytest.mark.anyio
-async def test_async_client_initialization_success_with_key(mock_httpx_async_client):
-    """Test successful async client initialization when API key is provided."""
-    with patch.dict(os.environ, {}, clear=True):
-        client_instance = AsyncMoorchehClient(
-            api_key=DUMMY_API_KEY, base_url="http://test.url"
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = MagicMock(
+            status_code=200, json=lambda: mock_response
         )
-        assert client_instance.api_key == DUMMY_API_KEY
-        assert client_instance.base_url == "http://test.url"
 
-        httpx.AsyncClient.assert_called_once()
-        call_args, call_kwargs = httpx.AsyncClient.call_args
-        assert call_kwargs["base_url"] == "http://test.url"
-        assert call_kwargs["headers"]["x-api-key"] == DUMMY_API_KEY
+        response = await client.namespaces.list()
 
-        await client_instance.close()
-
-
-@pytest.mark.anyio
-async def test_async_client_context_manager(mock_httpx_async_client):
-    """Test that the async client's close method is called when used as a context manager."""
-    with patch.dict(os.environ, {}, clear=True):
-        async with AsyncMoorchehClient(api_key=DUMMY_API_KEY) as client_instance:
-            assert isinstance(client_instance, AsyncMoorchehClient)
-
-        mock_httpx_async_client.aclose.assert_called_once()
+        assert response == mock_response
+        mock_request.assert_called_once()
+        args, kwargs = mock_request.call_args
+        assert kwargs["method"] == "GET"
+        assert kwargs["path"] == "/namespaces"
 
 
-@pytest.mark.anyio
-async def test_async_request_success(async_client, mock_response):
-    """Test a successful async request."""
-    #     TODO: Implement async resources and methods.
+@pytest.mark.asyncio
+async def test_documents_upload(client):
+    documents = [{"id": "1", "text": "hello"}]
+    mock_response = {"status": "queued", "submitted_ids": ["1"]}
 
-    mock_resp = mock_response(200, json_data={"data": "success"})
-    async_client._mock_httpx_instance.request.return_value = mock_resp
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = MagicMock(
+            status_code=202, json=lambda: mock_response
+        )
 
-    response = await async_client.request("GET", "/test")
+        response = await client.documents.upload(
+            namespace_name="test", documents=documents
+        )
 
-    assert response.status_code == 200
-    assert response.json() == {"data": "success"}
-    async_client._mock_httpx_instance.request.assert_called_once()
+        assert response == mock_response
+        mock_request.assert_called_once()
+        args, kwargs = mock_request.call_args
+        assert kwargs["method"] == "POST"
+        assert kwargs["path"] == "/namespaces/test/documents"
+        assert kwargs["json"] == {"documents": documents}
+
+
+@pytest.mark.asyncio
+async def test_search_query(client):
+    mock_response = {"results": [], "execution_time": 0.1}
+
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = MagicMock(
+            status_code=200, json=lambda: mock_response
+        )
+
+        response = await client.similarity_search.query(
+            namespaces=["test"], query="hello"
+        )
+
+        assert response == mock_response
+        mock_request.assert_called_once()
+        args, kwargs = mock_request.call_args
+        assert kwargs["method"] == "POST"
+        assert kwargs["path"] == "/search"
+        assert kwargs["json"] == {
+            "namespaces": ["test"],
+            "query": "hello",
+            "top_k": 10,
+            "kiosk_mode": False,
+        }
+
+
+@pytest.mark.asyncio
+async def test_search_query_with_threshold(client):
+    mock_response = {"results": [], "execution_time": 0.1}
+
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = MagicMock(
+            status_code=200, json=lambda: mock_response
+        )
+
+        response = await client.similarity_search.query(
+            namespaces=["test"], query="hello", threshold=0.5, kiosk_mode=True
+        )
+
+        assert response == mock_response
+        mock_request.assert_called_once()
+        args, kwargs = mock_request.call_args
+        assert kwargs["json"]["threshold"] == 0.5
+        assert kwargs["json"]["kiosk_mode"] is True
+
+
+@pytest.mark.asyncio
+async def test_answer_generate(client):
+    mock_response = {"answer": "world", "sources": [], "execution_time": 0.1}
+
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = MagicMock(
+            status_code=200, json=lambda: mock_response
+        )
+
+        response = await client.answer.generate(namespace="test", query="hello")
+
+        assert response == mock_response
+        mock_request.assert_called_once()
+        args, kwargs = mock_request.call_args
+        assert kwargs["method"] == "POST"
+        assert kwargs["path"] == "/answer"
+        assert kwargs["json"] == {
+            "namespace": "test",
+            "query": "hello",
+            "top_k": 10,
+            "aiModel": "anthropic.claude-sonnet-4-20250514-v1:0",
+            "temperature": 0.5,
+        }

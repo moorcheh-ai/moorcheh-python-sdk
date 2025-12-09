@@ -4,7 +4,7 @@ from ..exceptions import APIError, InvalidInputError
 from ..types import SearchResponse
 from ..utils.decorators import required_args
 from ..utils.logging import setup_logging
-from .base import BaseResource
+from .base import AsyncBaseResource, BaseResource
 
 logger = setup_logging(__name__)
 
@@ -101,8 +101,104 @@ class Search(BaseResource):
         result_count = len(response_data.get("results", []))
         exec_time = response_data.get("execution_time", "N/A")
         logger.info(
-            f"Search completed successfully. Found {result_count} result(s). Execution"
-            f" time: {exec_time}s."
+            f"Search completed successfully. Found {result_count} results. Execution time: {exec_time} seconds."
         )
-        logger.debug(f"Search results: {response_data}")
+        return cast(SearchResponse, response_data)
+
+
+class AsyncSearch(AsyncBaseResource):
+    @required_args(
+        ["namespaces", "query", "top_k", "threshold", "kiosk_mode"],
+        types={
+            "namespaces": list,
+            "query": str,
+            "top_k": int,
+            "threshold": (int, float, type(None)),
+            "kiosk_mode": bool,
+        },
+    )
+    async def query(
+        self,
+        namespaces: list[str],
+        query: str,
+        top_k: int = 10,
+        threshold: float | None = 0.25,
+        kiosk_mode: bool = False,
+    ) -> SearchResponse:
+        """
+        Performs a semantic search across specified namespaces asynchronously.
+
+        Args:
+            namespaces: A list of namespace names to search within.
+            query: The search query string.
+            top_k: The number of top results to return (default: 10).
+            threshold: Minimum similarity score (0-1). Defaults to 0.25.
+            kiosk_mode: Whether to enable kiosk mode (default: False).
+
+        Returns:
+            A dictionary containing the search results.
+
+            Structure:
+            {
+                "results": [
+                    {
+                        "id": str | int,
+                        "score": float,
+                        "text": str,
+                        "metadata": dict,
+                        "namespace": str
+                    }
+                ],
+                "execution_time": float
+            }
+
+        Raises:
+            InvalidInputError: If input is invalid.
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+        """
+        if not all(isinstance(ns, str) and ns for ns in namespaces):
+            raise InvalidInputError(
+                "All items in 'namespaces' list must be non-empty strings."
+            )
+
+        if top_k <= 0:
+            raise InvalidInputError("'top_k' must be a positive integer.")
+
+        if threshold is not None and (
+            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
+        ):
+            raise InvalidInputError(
+                "'threshold' must be a number between 0 and 1, or None."
+            )
+
+        logger.info(
+            f"Attempting to search in namespaces {namespaces} with query '{query}'"
+            f" (top_k={top_k}, threshold={threshold}, kiosk={kiosk_mode})..."
+        )
+
+        payload: dict[str, Any] = {
+            "namespaces": namespaces,
+            "query": query,
+            "top_k": top_k,
+            "kiosk_mode": kiosk_mode,
+        }
+        if kiosk_mode and threshold is not None:
+            payload["threshold"] = threshold
+
+        response_data = await self._client._request(
+            method="POST",
+            endpoint="/search",
+            json_data=payload,
+            expected_status=200,
+        )
+
+        if not isinstance(response_data, dict):
+            logger.error("Search response was not a dictionary.")
+            raise APIError(message="Unexpected response format from search endpoint.")
+
+        logger.info(
+            f"Search completed successfully. Found {len(response_data.get('results', []))} results."
+        )
         return cast(SearchResponse, response_data)

@@ -10,7 +10,7 @@ from ..types import (
 from ..utils.constants import INVALID_ID_CHARS
 from ..utils.decorators import required_args
 from ..utils.logging import setup_logging
-from .base import BaseResource
+from .base import AsyncBaseResource, BaseResource
 
 logger = setup_logging(__name__)
 
@@ -209,14 +209,10 @@ class Documents(BaseResource):
                 "All items in 'ids' list must be non-empty strings or integers."
             )
 
-        endpoint = f"/namespaces/{namespace_name}/documents/delete"
-        payload = {"ids": ids}
-
-        # Expecting 200 OK or 207 Multi-Status
         response_data = self._client._request(
             method="POST",
-            endpoint=endpoint,
-            json_data=payload,
+            endpoint=f"/namespaces/{namespace_name}/documents/delete",
+            json_data={"ids": ids},
             expected_status=200,
             alt_success_status=207,
         )
@@ -224,7 +220,7 @@ class Documents(BaseResource):
         if not isinstance(response_data, dict):
             logger.error("Delete documents response was not a dictionary.")
             raise APIError(
-                message="Unexpected response format after deleting documents."
+                message="Unexpected response format from delete documents endpoint."
             )
 
         deleted_count = len(response_data.get("deleted_ids", []))
@@ -238,4 +234,189 @@ class Documents(BaseResource):
             logger.warning(
                 f"Delete documents encountered errors: {response_data.get('errors')}"
             )
+        return cast(DocumentDeleteResponse, response_data)
+
+
+class AsyncDocuments(AsyncBaseResource):
+    @required_args(
+        ["namespace_name", "documents"],
+        types={"namespace_name": str, "documents": list},
+    )
+    async def upload(
+        self, namespace_name: str, documents: list[Document]
+    ) -> DocumentUploadResponse:
+        """
+        Uploads text documents to a text-based namespace asynchronously.
+
+        This process is asynchronous (fire-and-forget style on the server),
+        so the response confirms queuing, not completion.
+
+        Args:
+            namespace_name: The name of the target text-based namespace.
+            documents: A list of dictionaries representing the documents.
+                Each dictionary must contain:
+                - "id" (str | int): Unique identifier for the document.
+                - "text" (str): The text content to embed.
+                - "metadata" (dict, optional): Additional metadata.
+
+        Returns:
+            A dictionary confirming the documents were queued.
+
+            Structure:
+            {
+                "status": "queued",
+                "submitted_ids": list[str | int]
+            }
+
+        Raises:
+            InvalidInputError: If input validation fails or API returns 400.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+        """
+        logger.info(
+            f"Attempting to upload {len(documents)} documents to namespace"
+            f" '{namespace_name}'..."
+        )
+
+        response_data = await self._client._request(
+            method="POST",
+            endpoint=f"/namespaces/{namespace_name}/documents",
+            json_data={"documents": documents},
+            expected_status=202,
+        )
+
+        logger.info(
+            f"Successfully queued {len(documents)} documents for upload to"
+            f" '{namespace_name}'."
+        )
+        return cast(DocumentUploadResponse, response_data)
+
+    @required_args(
+        ["namespace_name", "ids"], types={"namespace_name": str, "ids": list}
+    )
+    async def get(
+        self, namespace_name: str, ids: list[str | int]
+    ) -> DocumentGetResponse:
+        """
+        Retrieves documents by their IDs from a text-based namespace asynchronously.
+
+        Args:
+            namespace_name: The name of the text-based namespace.
+            ids: A list of document IDs to retrieve (max 100).
+
+        Returns:
+            A dictionary containing the retrieved documents.
+
+            Structure:
+            {
+                "documents": [
+                    {
+                        "id": str | int,
+                        "text": str,
+                        "metadata": dict
+                    }
+                ]
+            }
+
+        Raises:
+            InvalidInputError: If input is invalid.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+        """
+        if len(ids) > 100:
+            raise InvalidInputError(
+                "Maximum of 100 document IDs can be requested per call."
+            )
+
+        # Check for invalid characters in IDs (client-side validation)
+        # Assuming IDs should be alphanumeric, dashes, or underscores.
+        # Adjust regex as per API requirements.
+        import re
+
+        invalid_id_pattern = re.compile(r"[^a-zA-Z0-9_\-]")
+        for doc_id in ids:
+            if isinstance(doc_id, str) and invalid_id_pattern.search(doc_id):
+                raise InvalidInputError(
+                    f"Invalid characters in document ID: '{doc_id}'. IDs should be"
+                    " alphanumeric."
+                )
+
+        logger.info(
+            f"Attempting to retrieve {len(ids)} document(s) from namespace"
+            f" '{namespace_name}'..."
+        )
+
+        response_data = await self._client._request(
+            method="POST",
+            endpoint=f"/namespaces/{namespace_name}/documents/get",
+            json_data={"ids": ids},
+            expected_status=200,
+        )
+
+        if not isinstance(response_data, dict):
+            logger.error("Get documents response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from get documents endpoint."
+            )
+
+        retrieved_count = len(response_data.get("documents", []))
+        logger.info(f"Successfully retrieved {retrieved_count} document(s).")
+        return cast(DocumentGetResponse, response_data)
+
+    @required_args(
+        ["namespace_name", "ids"], types={"namespace_name": str, "ids": list}
+    )
+    async def delete(
+        self, namespace_name: str, ids: list[str | int]
+    ) -> DocumentDeleteResponse:
+        """
+        Deletes documents by their IDs from a text-based namespace asynchronously.
+
+        Args:
+            namespace_name: The name of the text-based namespace.
+            ids: A list of document IDs to delete.
+
+        Returns:
+            A dictionary confirming the deletion status.
+
+            Structure:
+            {
+                "status": "success" | "partial",
+                "deleted_ids": list[str | int],
+                "errors": list[dict]
+            }
+
+        Raises:
+            InvalidInputError: If input is invalid.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+        """
+        logger.info(
+            f"Attempting to delete {len(ids)} document(s) from namespace"
+            f" '{namespace_name}' with IDs: {ids}"
+        )
+
+        response_data = await self._client._request(
+            method="POST",
+            endpoint=f"/namespaces/{namespace_name}/documents/delete",
+            json_data={"ids": ids},
+            expected_status=200,
+            alt_success_status=207,
+        )
+
+        if not isinstance(response_data, dict):
+            logger.error("Delete documents response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from delete documents endpoint."
+            )
+
+        logger.info(
+            f"Delete operation completed with status: {response_data.get('status')}"
+        )
         return cast(DocumentDeleteResponse, response_data)
