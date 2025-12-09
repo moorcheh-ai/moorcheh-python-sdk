@@ -108,14 +108,21 @@ class Search(BaseResource):
 
 class AsyncSearch(AsyncBaseResource):
     @required_args(
-        ["namespaces", "query", "top_k"],
-        types={"namespaces": list, "query": str, "top_k": int},
+        ["namespaces", "query", "top_k", "threshold", "kiosk_mode"],
+        types={
+            "namespaces": list,
+            "query": str,
+            "top_k": int,
+            "threshold": (int, float, type(None)),
+            "kiosk_mode": bool,
+        },
     )
     async def query(
         self,
         namespaces: list[str],
         query: str,
         top_k: int = 10,
+        threshold: float | None = 0.25,
         kiosk_mode: bool = False,
     ) -> SearchResponse:
         """
@@ -125,6 +132,7 @@ class AsyncSearch(AsyncBaseResource):
             namespaces: A list of namespace names to search within.
             query: The search query string.
             top_k: The number of top results to return (default: 10).
+            threshold: Minimum similarity score (0-1). Defaults to 0.25.
             kiosk_mode: Whether to enable kiosk mode (default: False).
 
         Returns:
@@ -158,17 +166,26 @@ class AsyncSearch(AsyncBaseResource):
         if top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
 
+        if threshold is not None and (
+            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
+        ):
+            raise InvalidInputError(
+                "'threshold' must be a number between 0 and 1, or None."
+            )
+
         logger.info(
             f"Attempting to search in namespaces {namespaces} with query '{query}'"
-            f" (top_k={top_k})..."
+            f" (top_k={top_k}, threshold={threshold}, kiosk={kiosk_mode})..."
         )
 
-        payload = {
+        payload: dict[str, Any] = {
             "namespaces": namespaces,
             "query": query,
             "top_k": top_k,
             "kiosk_mode": kiosk_mode,
         }
+        if kiosk_mode and threshold is not None:
+            payload["threshold"] = threshold
 
         response_data = await self._client._request(
             method="POST",

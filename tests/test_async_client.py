@@ -103,6 +103,26 @@ async def test_search_query(client):
 
 
 @pytest.mark.asyncio
+async def test_search_query_with_threshold(client):
+    mock_response = {"results": [], "execution_time": 0.1}
+
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = MagicMock(
+            status_code=200, json=lambda: mock_response
+        )
+
+        response = await client.similarity_search.query(
+            namespaces=["test"], query="hello", threshold=0.5, kiosk_mode=True
+        )
+
+        assert response == mock_response
+        mock_request.assert_called_once()
+        args, kwargs = mock_request.call_args
+        assert kwargs["json"]["threshold"] == 0.5
+        assert kwargs["json"]["kiosk_mode"] is True
+
+
+@pytest.mark.asyncio
 async def test_answer_generate(client):
     mock_response = {"answer": "world", "sources": [], "execution_time": 0.1}
 
@@ -122,6 +142,6 @@ async def test_answer_generate(client):
             "namespace": "test",
             "query": "hello",
             "top_k": 10,
-            "ai_model": "gpt-4o",
+            "aiModel": "anthropic.claude-sonnet-4-20250514-v1:0",
             "temperature": 0.5,
         }
