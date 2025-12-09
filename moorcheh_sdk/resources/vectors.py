@@ -2,6 +2,7 @@ from typing import cast
 
 from ..exceptions import APIError, InvalidInputError
 from ..types import Vector, VectorDeleteResponse, VectorUploadResponse
+from ..utils.batching import chunk_iterable
 from ..utils.decorators import required_args
 from ..utils.logging import setup_logging
 from .base import AsyncBaseResource, BaseResource
@@ -73,36 +74,50 @@ class Vectors(BaseResource):
                 )
 
         endpoint = f"/namespaces/{namespace_name}/vectors"
-        payload = {"vectors": vectors}
-        logger.debug(f"Upload vectors payload size: {len(vectors)}")
 
-        # Expecting 201 Created or 207 Multi-Status
-        response_data = self._client._request(
-            method="POST",
-            endpoint=endpoint,
-            json_data=payload,
-            expected_status=201,
-            alt_success_status=207,
-        )
+        all_processed_ids = []
+        all_errors = []
+        overall_status = "success"
 
-        if not isinstance(response_data, dict):
-            logger.error("Upload vectors response was not a dictionary.")
-            raise APIError(
-                message="Unexpected response format after uploading vectors."
+        for batch in chunk_iterable(vectors, 100):
+            payload = {"vectors": batch}
+            logger.debug(f"Uploading batch of {len(batch)} vectors...")
+
+            # Expecting 201 Created or 207 Multi-Status
+            response_data = self._client._request(
+                method="POST",
+                endpoint=endpoint,
+                json_data=payload,
+                expected_status=201,
+                alt_success_status=207,
             )
 
-        processed_count = len(response_data.get("vector_ids_processed", []))
-        error_count = len(response_data.get("errors", []))
+            if not isinstance(response_data, dict):
+                logger.error("Upload vectors response was not a dictionary.")
+                raise APIError(
+                    message="Unexpected response format after uploading vectors."
+                )
+
+            all_processed_ids.extend(response_data.get("vector_ids_processed", []))
+            batch_errors = response_data.get("errors", [])
+            all_errors.extend(batch_errors)
+
+            if batch_errors or response_data.get("status") != "success":
+                overall_status = "partial"
+
         logger.info(
             f"Upload vectors to '{namespace_name}' completed. Status:"
-            f" {response_data.get('status')}, Processed: {processed_count}, Errors:"
-            f" {error_count}"
+            f" {overall_status}, Processed: {len(all_processed_ids)}, Errors:"
+            f" {len(all_errors)}"
         )
-        if error_count > 0:
-            logger.warning(
-                f"Upload vectors encountered errors: {response_data.get('errors')}"
-            )
-        return cast(VectorUploadResponse, response_data)
+        if all_errors:
+            logger.warning(f"Upload vectors encountered errors: {all_errors}")
+
+        return {
+            "status": overall_status,
+            "vector_ids_processed": all_processed_ids,
+            "errors": all_errors,
+        }
 
     @required_args(
         ["namespace_name", "ids"], types={"namespace_name": str, "ids": list}
@@ -215,34 +230,40 @@ class AsyncVectors(AsyncBaseResource):
             f" '{namespace_name}'..."
         )
 
-        response_data = await self._client._request(
-            method="POST",
-            endpoint=f"/namespaces/{namespace_name}/vectors",
-            json_data={"vectors": vectors},
-            expected_status=201,
-            alt_success_status=207,
-        )
+        all_processed_ids = []
+        all_errors = []
+        overall_status = "success"
 
-        if not isinstance(response_data, dict):
-            logger.error("Upload vectors response was not a dictionary.")
-            raise APIError(
-                message="Unexpected response format after uploading vectors."
+        for batch in chunk_iterable(vectors, 100):
+            response_data = await self._client._request(
+                method="POST",
+                endpoint=f"/namespaces/{namespace_name}/vectors",
+                json_data={"vectors": batch},
+                expected_status=201,
+                alt_success_status=207,
             )
 
-        processed_count = len(response_data.get("vector_ids_processed", []))
-        error_count = len(response_data.get("errors", []))
+            if isinstance(response_data, dict):
+                all_processed_ids.extend(response_data.get("vector_ids_processed", []))
+                batch_errors = response_data.get("errors", [])
+                all_errors.extend(batch_errors)
+
+                if batch_errors or response_data.get("status") != "success":
+                    overall_status = "partial"
 
         logger.info(
             f"Upload vectors to '{namespace_name}' completed. Status:"
-            f" {response_data.get('status')}, Processed: {processed_count}, Errors:"
-            f" {error_count}"
+            f" {overall_status}, Processed: {len(all_processed_ids)}, Errors:"
+            f" {len(all_errors)}"
         )
-        if error_count > 0:
-            logger.warning(
-                f"Upload vectors encountered errors: {response_data.get('errors')}"
-            )
+        if all_errors:
+            logger.warning(f"Upload vectors encountered errors: {all_errors}")
 
-        return cast(VectorUploadResponse, response_data)
+        return {
+            "status": overall_status,
+            "vector_ids_processed": all_processed_ids,
+            "errors": all_errors,
+        }
 
     @required_args(
         ["namespace_name", "ids"], types={"namespace_name": str, "ids": list}
