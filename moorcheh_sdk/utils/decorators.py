@@ -24,6 +24,8 @@ def required_args(
     """
 
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        is_async = inspect.iscoroutinefunction(func)
+
         @wraps(func)
         def wrapper(*func_args: P.args, **func_kwargs: P.kwargs) -> R:
             sig = inspect.signature(func)
@@ -36,10 +38,6 @@ def required_args(
 
             for arg_name in args:
                 if arg_name not in bound.arguments:
-                    # This might happen if the argument is not in the signature,
-                    # but if it is in 'args' list it should be expected.
-                    # However, bind() would fail if a required arg is missing unless it has a default.
-                    # If it has a default of None, we might want to catch it here.
                     continue
 
                 val = bound.arguments[arg_name]
@@ -58,6 +56,40 @@ def required_args(
                         )
 
             return func(*func_args, **func_kwargs)
+
+        @wraps(func)
+        async def async_wrapper(*func_args: P.args, **func_kwargs: P.kwargs) -> R:
+            sig = inspect.signature(func)
+            try:
+                bound = sig.bind(*func_args, **func_kwargs)
+            except TypeError as e:
+                raise InvalidInputError(str(e)) from e
+
+            bound.apply_defaults()
+
+            for arg_name in args:
+                if arg_name not in bound.arguments:
+                    continue
+
+                val = bound.arguments[arg_name]
+
+                if val is None:
+                    raise InvalidInputError(f"Argument '{arg_name}' cannot be None.")
+
+                if isinstance(val, (str, list, dict, set, tuple)) and not val:
+                    raise InvalidInputError(f"Argument '{arg_name}' cannot be empty.")
+
+                if types and arg_name in types:
+                    expected_type = types[arg_name]
+                    if not isinstance(val, expected_type):
+                        raise InvalidInputError(
+                            f"Argument '{arg_name}' must be of type {expected_type}."
+                        )
+
+            return await func(*func_args, **func_kwargs)  # type: ignore
+
+        if is_async:
+            return async_wrapper  # type: ignore
 
         return wrapper
 
