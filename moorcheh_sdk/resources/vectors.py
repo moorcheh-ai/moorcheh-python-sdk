@@ -215,10 +215,34 @@ class AsyncVectors(AsyncBaseResource):
             f" '{namespace_name}'..."
         )
 
+        for i, vec_item in enumerate(vectors):
+            if not isinstance(vec_item, dict):
+                raise InvalidInputError(
+                    f"Item at index {i} in 'vectors' is not a dictionary."
+                )
+            if "id" not in vec_item or vec_item["id"] is None or vec_item["id"] == "":
+                raise InvalidInputError(
+                    f"Item at index {i} in 'vectors' is missing required key 'id' or it"
+                    " is empty."
+                )
+            if "vector" not in vec_item or not isinstance(vec_item["vector"], list):
+                raise InvalidInputError(
+                    f"Item at index {i} with id '{vec_item['id']}' is missing required"
+                    " key 'vector' or it is not a list."
+                )
+            if not vec_item["vector"]:
+                raise InvalidInputError(
+                    f"Item at index {i} with id '{vec_item['id']}' has an empty 'vector' list."
+                )
+
+        endpoint = f"/namespaces/{namespace_name}/vectors"
+        payload = {"vectors": vectors}
+        logger.debug(f"Upload vectors payload size: {len(vectors)}")
+
         response_data = await self._client._request(
             method="POST",
-            endpoint=f"/namespaces/{namespace_name}/vectors",
-            json_data={"vectors": vectors},
+            endpoint=endpoint,
+            json_data=payload,
             expected_status=201,
             alt_success_status=207,
         )
@@ -278,11 +302,21 @@ class AsyncVectors(AsyncBaseResource):
             f"Attempting to delete {len(ids)} vector(s) from namespace"
             f" '{namespace_name}' with IDs: {ids}"
         )
+        if not all(
+            isinstance(item_id, (str, int)) and (item_id or item_id == 0)
+            for item_id in ids
+        ):
+            raise InvalidInputError(
+                "All items in 'ids' list must be non-empty strings or integers."
+            )
+
+        endpoint = f"/namespaces/{namespace_name}/vectors/delete"
+        payload = {"ids": ids}
 
         response_data = await self._client._request(
             method="POST",
-            endpoint=f"/namespaces/{namespace_name}/vectors/delete",
-            json_data={"ids": ids},
+            endpoint=endpoint,
+            json_data=payload,
             expected_status=200,
             alt_success_status=207,
         )
