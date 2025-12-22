@@ -1,7 +1,3 @@
-import os
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from moorcheh_sdk import (
@@ -294,7 +290,9 @@ def test_upload_file_invalid_extension(client, tmp_path, file_extension):
     "file_extension",
     [".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"],
 )
-def test_upload_file_valid_extensions(client, mocker, mock_response, tmp_path, file_extension):
+def test_upload_file_valid_extensions(
+    client, mocker, mock_response, tmp_path, file_extension
+):
     """Test file upload with all valid file extensions."""
     test_file = tmp_path / f"test{file_extension}"
     test_file.write_bytes(b"content")
@@ -347,7 +345,8 @@ def test_upload_file_invalid_file_like_object_type(client):
     # Pass an object that doesn't have a 'read' method and isn't a string/Path
     with pytest.raises(InvalidInputError, match="file path.*or a file-like object"):
         client.documents.upload_file(
-            namespace_name=TEST_NAMESPACE, file_path=123  # type: ignore
+            namespace_name=TEST_NAMESPACE,
+            file_path=123,  # type: ignore
         )
     client._mock_httpx_instance.request.assert_not_called()
 

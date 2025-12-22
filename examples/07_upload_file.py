@@ -24,7 +24,9 @@ logger = logging.getLogger(__name__)
 # -------------------------
 
 
-def create_test_file(file_path: Path, content: str = "This is a test document.") -> None:
+def create_test_file(
+    file_path: Path, content: str = "This is a test document."
+) -> None:
     """Create a test file if it doesn't exist."""
     if not file_path.exists():
         file_path.write_text(content)
@@ -68,7 +70,9 @@ def main():
     # 4. Upload the file
     try:
         with client:
-            logger.info(f"Uploading file '{test_file_path}' to namespace '{target_namespace}'...")
+            logger.info(
+                f"Uploading file '{test_file_path}' to namespace '{target_namespace}'..."
+            )
             response = client.documents.upload_file(
                 namespace_name=target_namespace,
                 file_path=test_file_path,
@@ -92,22 +96,26 @@ def main():
     except NamespaceNotFound as e:
         logger.error(f"Namespace '{target_namespace}' not found.")
         logger.error(f"API Message: {e}")
-        logger.info("💡 Tip: Create the namespace first using the create namespace example.")
+        logger.info(
+            "💡 Tip: Create the namespace first using the create namespace example."
+        )
     except InvalidInputError as e:
         logger.error("Invalid input provided for file upload.")
         logger.error(f"API Message: {e}")
         logger.info("💡 Tip: Check that:")
         logger.info("   - The file exists")
-        logger.info("   - The file type is supported (.pdf, .docx, .xlsx, .json, .txt, .csv, .md)")
+        logger.info(
+            "   - The file type is supported (.pdf, .docx, .xlsx, .json, .txt, .csv, .md)"
+        )
         logger.info("   - The file size is less than 10MB")
     except AuthenticationError as e:
         logger.error("Authentication failed during file upload.")
         logger.error(f"API Message: {e}")
-    except APIError as e:
+    except APIError:
         logger.exception("An API error occurred during file upload.")
-    except MoorchehError as e:
+    except MoorchehError:
         logger.exception("An SDK or network error occurred.")
-    except Exception as e:
+    except Exception:
         logger.exception("An unexpected error occurred.")
 
 

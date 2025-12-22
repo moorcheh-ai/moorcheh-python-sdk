@@ -386,7 +386,7 @@ class Documents(BaseResource):
             # Prepare multipart/form-data
             # httpx will automatically set Content-Type: multipart/form-data when files are provided
             files = {"file": (file_name, file_obj, None)}
-            
+
             # Use the SDK's request method - it will handle retries and httpx will set multipart/form-data
             response = self._client.request(
                 method="POST",
@@ -819,7 +819,7 @@ class AsyncDocuments(AsyncBaseResource):
             # Prepare multipart/form-data
             # httpx will automatically set Content-Type: multipart/form-data when files are provided
             files = {"file": (file_name, file_obj, None)}
-            
+
             # Use the SDK's request method - it will handle retries and httpx will set multipart/form-data
             response = await self._client.request(
                 method="POST",
