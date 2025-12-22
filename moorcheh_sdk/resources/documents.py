@@ -306,7 +306,7 @@ class Documents(BaseResource):
         # Handle file path or file-like object
         file_obj: BinaryIO
         file_name: str
-        file_size: int
+        file_size: int | None
 
         if isinstance(file_path, (str, Path)):
             # File path provided
@@ -455,7 +455,11 @@ class Documents(BaseResource):
                             status_code=response.status_code,
                             message=f"API Error: {response.text}",
                         ) from http_err
-                return None  # Should not be reached
+                # This line should never be reached as all error cases raise exceptions
+                raise APIError(
+                    status_code=response.status_code,
+                    message=f"Unexpected error: {response.text}",
+                )
 
         finally:
             if should_close and hasattr(file_obj, "close"):
@@ -739,7 +743,7 @@ class AsyncDocuments(AsyncBaseResource):
         # Handle file path or file-like object
         file_obj: BinaryIO
         file_name: str
-        file_size: int
+        file_size: int | None
 
         if isinstance(file_path, (str, Path)):
             # File path provided
@@ -888,7 +892,11 @@ class AsyncDocuments(AsyncBaseResource):
                             status_code=response.status_code,
                             message=f"API Error: {response.text}",
                         ) from http_err
-                return None  # Should not be reached
+                # This line should never be reached as all error cases raise exceptions
+                raise APIError(
+                    status_code=response.status_code,
+                    message=f"Unexpected error: {response.text}",
+                )
 
         finally:
             if should_close and hasattr(file_obj, "close"):
