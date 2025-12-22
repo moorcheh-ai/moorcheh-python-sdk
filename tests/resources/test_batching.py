@@ -77,31 +77,25 @@ async def test_async_documents_upload_batching(async_client):
 
 
 def test_vectors_upload_batching(sync_client):
+    """Test that sync vectors upload does NOT batch (sends all in one request)."""
     vectors = [{"id": str(i), "vector": [0.1] * 10} for i in range(150)]
 
-    mock_response_1 = {
+    mock_response = {
         "status": "success",
-        "vector_ids_processed": [str(i) for i in range(100)],
-        "errors": [],
-    }
-    mock_response_2 = {
-        "status": "success",
-        "vector_ids_processed": [str(i) for i in range(100, 150)],
+        "vector_ids_processed": [str(i) for i in range(150)],
         "errors": [],
     }
 
     with patch.object(sync_client, "request") as mock_request:
-        mock_request.side_effect = [
-            MagicMock(status_code=201, json=lambda: mock_response_1),
-            MagicMock(status_code=201, json=lambda: mock_response_2),
-        ]
+        mock_request.return_value = MagicMock(status_code=201, json=lambda: mock_response)
 
         response = sync_client.vectors.upload(namespace_name="test", vectors=vectors)
 
         assert response["status"] == "success"
         assert len(response["vector_ids_processed"]) == 150
         assert len(response["errors"]) == 0
-        assert mock_request.call_count == 2
+        # Sync version does NOT batch - sends all vectors in one request
+        assert mock_request.call_count == 1
 
 
 @pytest.mark.asyncio
