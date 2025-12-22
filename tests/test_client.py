@@ -29,7 +29,6 @@ def test_client_initialization_success_with_key(mock_httpx_client):
             base_url="http://test.url",
             headers={
                 "x-api-key": DUMMY_API_KEY,
-                "Content-Type": "application/json",
                 "Accept": "application/json",
                 "User-Agent": f"moorcheh-python-sdk/{__version__}",
             },

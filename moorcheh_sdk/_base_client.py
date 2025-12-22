@@ -28,7 +28,9 @@ class SyncAPIClient:
         else:
             headers = {
                 "Accept": "application/json",
-                "Content-Type": "application/json",
+                # Content-Type is NOT set here - httpx will automatically set it:
+                # - application/json when json= parameter is used
+                # - multipart/form-data when files= parameter is used
             }
             if api_key:
                 headers["x-api-key"] = api_key
@@ -162,7 +164,9 @@ class AsyncAPIClient:
         else:
             headers = {
                 "Accept": "application/json",
-                "Content-Type": "application/json",
+                # Content-Type is NOT set here - httpx will automatically set it:
+                # - application/json when json= parameter is used
+                # - multipart/form-data when files= parameter is used
             }
             if api_key:
                 headers["x-api-key"] = api_key

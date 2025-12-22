@@ -10,6 +10,7 @@ from .document import (
     DocumentDeleteResponse,
     DocumentGetResponse,
     DocumentUploadResponse,
+    FileUploadResponse,
 )
 from .namespace import Namespace, NamespaceCreateResponse, NamespaceListResponse
 from .search import SearchResponse, SearchResult
@@ -37,6 +38,7 @@ __all__ = [
     "DocumentUploadResponse",
     "DocumentDeleteResponse",
     "DocumentGetResponse",
+    "FileUploadResponse",
     "Vector",
     "VectorUploadResponse",
     "VectorDeleteResponse",
