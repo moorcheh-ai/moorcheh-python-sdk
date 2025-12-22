@@ -36,6 +36,7 @@ def test_get_generative_answer_success(client, mocker, mock_response):
         "temperature": 0.7,
         "headerPrompt": "",
         "footerPrompt": "",
+        "kiosk_mode": False,
     }
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST", url="/answer", json=expected_payload, params=None

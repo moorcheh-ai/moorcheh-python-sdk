@@ -141,7 +141,12 @@ async def test_answer_generate(client):
         assert kwargs["json"] == {
             "namespace": "test",
             "query": "hello",
-            "top_k": 10,
+            "top_k": 5,
+            "type": "text",
             "aiModel": "anthropic.claude-sonnet-4-20250514-v1:0",
-            "temperature": 0.5,
+            "chatHistory": [],
+            "temperature": 0.7,
+            "headerPrompt": "",
+            "footerPrompt": "",
+            "kiosk_mode": False,
         }
