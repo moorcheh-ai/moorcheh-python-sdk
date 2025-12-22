@@ -20,3 +20,11 @@ class DocumentDeleteResponse(StatusResponse):
 
 class DocumentGetResponse(TypedDict):
     documents: list[Document]
+
+
+class FileUploadResponse(TypedDict):
+    success: bool
+    message: str
+    namespace: str
+    fileName: str
+    fileSize: int
