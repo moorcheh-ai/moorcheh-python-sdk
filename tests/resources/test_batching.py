@@ -87,7 +87,9 @@ def test_vectors_upload_batching(sync_client):
     }
 
     with patch.object(sync_client, "request") as mock_request:
-        mock_request.return_value = MagicMock(status_code=201, json=lambda: mock_response)
+        mock_request.return_value = MagicMock(
+            status_code=201, json=lambda: mock_response
+        )
 
         response = sync_client.vectors.upload(namespace_name="test", vectors=vectors)
 
