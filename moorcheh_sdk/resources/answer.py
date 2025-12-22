@@ -30,6 +30,8 @@ class Answer(BaseResource):
         temperature: float = 0.7,
         header_prompt: str | None = None,
         footer_prompt: str | None = None,
+        threshold: float = 0.25,
+        kiosk_mode: bool = False,
     ) -> AnswerResponse:
         """
         Generates an AI answer based on a search query within a namespace.
@@ -51,6 +53,9 @@ class Answer(BaseResource):
                 Defaults to None.
             footer_prompt: Optional footer prompt to be used in the LLM.
                 Defaults to None.
+            threshold: Minimum similarity score (0-1) for search results when
+                kiosk_mode is enabled. Defaults to 0.25.
+            kiosk_mode: Enable strict filtering with threshold. Defaults to False.
 
         Returns:
             A dictionary containing the generated answer and metadata.
@@ -81,6 +86,12 @@ class Answer(BaseResource):
             raise InvalidInputError(
                 "'temperature' must be a number between 0.0 and 1.0."
             )
+        if threshold is not None and (
+            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
+        ):
+            raise InvalidInputError(
+                "'threshold' must be a number between 0 and 1, or None."
+            )
 
         payload: dict[str, Any] = {
             "namespace": namespace,
@@ -92,7 +103,10 @@ class Answer(BaseResource):
             "temperature": temperature,
             "headerPrompt": header_prompt if header_prompt is not None else "",
             "footerPrompt": footer_prompt if footer_prompt is not None else "",
+            "kiosk_mode": kiosk_mode,
         }
+        if kiosk_mode and threshold is not None:
+            payload["threshold"] = threshold
         logger.debug(f"Generative answer payload: {payload}")
 
         response_data = self._client._request(
@@ -126,19 +140,38 @@ class AsyncAnswer(AsyncBaseResource):
         self,
         namespace: str,
         query: str,
-        top_k: int = 10,
+        top_k: int = 5,
         ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
-        temperature: float = 0.5,
+        chat_history: list[ChatHistoryItem] | None = None,
+        temperature: float = 0.7,
+        header_prompt: str | None = None,
+        footer_prompt: str | None = None,
+        threshold: float = 0.25,
+        kiosk_mode: bool = False,
     ) -> AnswerResponse:
         """
-        Generates an answer to a query based on the content of a namespace asynchronously.
+        Generates an AI answer based on a search query within a namespace asynchronously.
+
+        This method performs a semantic search to retrieve relevant context and then
+        uses a Large Language Model (LLM) to generate a conversational response.
 
         Args:
-            namespace: The name of the namespace to use as context.
-            query: The question or query to answer.
-            top_k: The number of relevant documents to retrieve for context (default: 10).
-            ai_model: The AI model to use for generation (default: "gpt-4o").
-            temperature: The creativity of the model (0.0 to 1.0, default: 0.5).
+            namespace: The name of the text-based namespace to search within.
+            query: The question or prompt to answer.
+            top_k: The number of search results to use as context. Defaults to 5.
+            ai_model: The identifier of the LLM to use.
+                Defaults to "anthropic.claude-sonnet-4-20250514-v1:0".
+            chat_history: Optional list of previous conversation turns for context.
+                Each item should be a dictionary. Defaults to None.
+            temperature: The sampling temperature for the LLM (0.0 to 1.0).
+                Higher values introduce more randomness. Defaults to 0.7.
+            header_prompt: Optional header prompt to be used in the LLM.
+                Defaults to None.
+            footer_prompt: Optional footer prompt to be used in the LLM.
+                Defaults to None.
+            threshold: Minimum similarity score (0-1) for search results when
+                kiosk_mode is enabled. Defaults to 0.25.
+            kiosk_mode: Enable strict filtering with threshold. Defaults to False.
 
         Returns:
             A dictionary containing the generated answer and source documents.
@@ -170,18 +203,33 @@ class AsyncAnswer(AsyncBaseResource):
         if not (0 <= temperature <= 1):
             raise InvalidInputError("'temperature' must be between 0.0 and 1.0.")
 
+        if threshold is not None and (
+            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
+        ):
+            raise InvalidInputError(
+                "'threshold' must be a number between 0 and 1, or None."
+            )
+
         logger.info(
             f"Attempting to generate answer for query '{query}' in namespace"
             f" '{namespace}' (model={ai_model})..."
         )
 
-        payload = {
+        payload: dict[str, Any] = {
             "namespace": namespace,
             "query": query,
             "top_k": top_k,
+            "type": "text",  # Hardcoded as per API design
             "aiModel": ai_model,
+            "chatHistory": chat_history if chat_history is not None else [],
             "temperature": temperature,
+            "headerPrompt": header_prompt if header_prompt is not None else "",
+            "footerPrompt": footer_prompt if footer_prompt is not None else "",
+            "kiosk_mode": kiosk_mode,
         }
+        if kiosk_mode and threshold is not None:
+            payload["threshold"] = threshold
+        logger.debug(f"Generative answer payload: {payload}")
 
         response_data = await self._client._request(
             method="POST",
@@ -191,8 +239,10 @@ class AsyncAnswer(AsyncBaseResource):
         )
 
         if not isinstance(response_data, dict):
-            logger.error("Answer response was not a dictionary.")
-            raise APIError(message="Unexpected response format from answer endpoint.")
+            logger.error("Generative answer response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from generative answer endpoint."
+            )
 
         logger.info(
             f"Answer generation completed successfully. Answer length: {len(response_data.get('answer', ''))}"
