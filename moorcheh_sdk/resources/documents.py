@@ -287,18 +287,52 @@ class AsyncDocuments(AsyncBaseResource):
             f" '{namespace_name}'..."
         )
 
+        for i, doc in enumerate(documents):
+            if not isinstance(doc, dict):
+                raise InvalidInputError(
+                    f"Item at index {i} in 'documents' is not a dictionary."
+                )
+            if "id" not in doc or not doc["id"]:
+                raise InvalidInputError(
+                    f"Item at index {i} in 'documents' is missing required key 'id' or it is empty."
+                )
+            if isinstance(doc["id"], str) and any(
+                char in doc["id"] for char in INVALID_ID_CHARS
+            ):
+                raise InvalidInputError(
+                    f"Item at index {i} in 'documents' has an invalid ID. Invalid characters: {INVALID_ID_CHARS!r}"
+                )
+            if (
+                "text" not in doc
+                or not isinstance(doc["text"], str)
+                or not doc["text"].strip()
+            ):
+                raise InvalidInputError(
+                    f"Item at index {i} in 'documents' is missing required key 'text' or it is not a non-empty string."
+                )
+
+        endpoint = f"/namespaces/{namespace_name}/documents"
+
         all_submitted_ids = []
 
         for batch in chunk_iterable(documents, 100):
+            payload = {"documents": batch}
+            logger.debug(f"Uploading batch of {len(batch)} documents...")
+
             response_data = await self._client._request(
                 method="POST",
-                endpoint=f"/namespaces/{namespace_name}/documents",
-                json_data={"documents": batch},
+                endpoint=endpoint,
+                json_data=payload,
                 expected_status=202,
             )
 
-            if isinstance(response_data, dict):
-                all_submitted_ids.extend(response_data.get("submitted_ids", []))
+            if not isinstance(response_data, dict):
+                logger.error("Upload documents response was not a dictionary.")
+                raise APIError(
+                    message="Unexpected response format after uploading documents."
+                )
+
+            all_submitted_ids.extend(response_data.get("submitted_ids", []))
 
         logger.info(
             f"Successfully queued {len(all_submitted_ids)} documents for upload to"
