@@ -9,7 +9,7 @@
 </a>
 
 [![PyPI version](https://badge.fury.io/py/moorcheh-sdk.svg)](https://badge.fury.io/py/moorcheh-sdk) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Version](https://img.shields.io/pypi/pyversions/moorcheh-sdk.svg)](https://pypi.org/project/moorcheh-sdk/)
+[![Python Version](https://img.shields.io/pypi/v/moorcheh-sdk.svg)](https://pypi.org/project/moorcheh-sdk/)
 [![Downloads](https://static.pepy.tech/personalized-badge/moorcheh-sdk?period=total&units=international_system&left_color=grey&right_color=blue&left_text=Downloads)](https://pepy.tech/project/moorcheh-sdk)
 
  Python SDK for interacting with the Moorcheh Semantic Search API v1. Moorcheh provides ultra-fast, highly accurate vector similarity search and analysis capabilities based on information-theoretic principles.
