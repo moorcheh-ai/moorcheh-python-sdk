@@ -10,16 +10,7 @@ logger = setup_logging(__name__)
 
 
 class Answer(BaseResource):
-    @required_args(
-        ["namespace", "query", "top_k", "ai_model", "temperature"],
-        types={
-            "namespace": str,
-            "query": str,
-            "top_k": int,
-            "ai_model": str,
-            "temperature": (int, float),
-        },
-    )
+    @required_args(["namespace", "query"], types={"namespace": str, "query": str})
     def generate(
         self,
         namespace: str,
@@ -126,16 +117,7 @@ class Answer(BaseResource):
 
 
 class AsyncAnswer(AsyncBaseResource):
-    @required_args(
-        ["namespace", "query", "top_k", "ai_model", "temperature"],
-        types={
-            "namespace": str,
-            "query": str,
-            "top_k": int,
-            "ai_model": str,
-            "temperature": (int, float),
-        },
-    )
+    @required_args(["namespace", "query"], types={"namespace": str, "query": str})
     async def generate(
         self,
         namespace: str,

@@ -10,21 +10,13 @@ logger = setup_logging(__name__)
 
 
 class Search(BaseResource):
-    @required_args(
-        ["namespaces", "query", "top_k", "kiosk_mode"],
-        types={
-            "namespaces": list,
-            "query": (str, list),
-            "top_k": int,
-            "kiosk_mode": bool,
-        },
-    )
+    @required_args(["namespaces", "query"], types={"namespaces": list, "query": (str, list)})
     def query(
         self,
         namespaces: list[str],
         query: str | list[float],
         top_k: int = 10,
-        threshold: float | None = 0.25,
+        threshold: float = 0.25,
         kiosk_mode: bool = False,
     ) -> SearchResponse:
         """
@@ -107,22 +99,13 @@ class Search(BaseResource):
 
 
 class AsyncSearch(AsyncBaseResource):
-    @required_args(
-        ["namespaces", "query", "top_k", "threshold", "kiosk_mode"],
-        types={
-            "namespaces": list,
-            "query": str,
-            "top_k": int,
-            "threshold": (int, float, type(None)),
-            "kiosk_mode": bool,
-        },
-    )
+    @required_args(["namespaces", "query"], types={"namespaces": list, "query": str})
     async def query(
         self,
         namespaces: list[str],
         query: str,
         top_k: int = 10,
-        threshold: float | None = 0.25,
+        threshold: float = 0.25,
         kiosk_mode: bool = False,
     ) -> SearchResponse:
         """
