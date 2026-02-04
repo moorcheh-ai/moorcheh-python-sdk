@@ -16,7 +16,7 @@ class Search(BaseResource):
         namespaces: list[str],
         query: str | list[float],
         top_k: int = 10,
-        threshold: float = 0.25,
+        threshold: float | None = None,
         kiosk_mode: bool = False,
     ) -> SearchResponse:
         """
@@ -53,15 +53,14 @@ class Search(BaseResource):
             MoorchehError: For network issues.
         """
         if not all(isinstance(ns, str) and ns for ns in namespaces):
-            raise InvalidInputError(
-                "All items in 'namespaces' list must be non-empty strings."
-            )
+            raise InvalidInputError("All items in 'namespaces' list must be non-empty strings.")
         if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
-        if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
-            raise InvalidInputError(
-                "'threshold' must be a number between 0 and 1, or None."
-            )
+        if threshold is not None:
+            if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
+                raise InvalidInputError("'threshold' must be a number between 0 and 1, or None.")
+            if not kiosk_mode:
+                logger.warning("'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored.")
         if not isinstance(kiosk_mode, bool):
             raise InvalidInputError("'kiosk_mode' must be a boolean.")
 
@@ -77,7 +76,10 @@ class Search(BaseResource):
             "top_k": top_k,
             "kiosk_mode": kiosk_mode,
         }
-        if kiosk_mode and threshold is not None:
+
+        if threshold is None:
+            threshold = 0.25
+        if kiosk_mode:
             payload["threshold"] = threshold
 
         logger.debug(f"Search payload: {payload}")
@@ -105,7 +107,7 @@ class AsyncSearch(AsyncBaseResource):
         namespaces: list[str],
         query: str,
         top_k: int = 10,
-        threshold: float = 0.25,
+        threshold: float | None = None,
         kiosk_mode: bool = False,
     ) -> SearchResponse:
         """
@@ -142,18 +144,14 @@ class AsyncSearch(AsyncBaseResource):
             MoorchehError: For network issues.
         """
         if not all(isinstance(ns, str) and ns for ns in namespaces):
-            raise InvalidInputError(
-                "All items in 'namespaces' list must be non-empty strings."
-            )
-
+            raise InvalidInputError("All items in 'namespaces' list must be non-empty strings.")
         if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
-
-        if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
-            raise InvalidInputError(
-                "'threshold' must be a number between 0 and 1, or None."
-            )
-
+        if threshold is not None:
+            if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
+                raise InvalidInputError("'threshold' must be a number between 0 and 1, or None.")
+            if not kiosk_mode:
+                logger.warning("'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored.")
         if not isinstance(kiosk_mode, bool):
             raise InvalidInputError("'kiosk_mode' must be a boolean.")
 
@@ -168,7 +166,10 @@ class AsyncSearch(AsyncBaseResource):
             "top_k": top_k,
             "kiosk_mode": kiosk_mode,
         }
-        if kiosk_mode and threshold is not None:
+
+        if threshold is None:
+            threshold = 0.25
+        if kiosk_mode:
             payload["threshold"] = threshold
 
         response_data = await self._client._request(
