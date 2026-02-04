@@ -56,14 +56,14 @@ class Search(BaseResource):
             raise InvalidInputError(
                 "All items in 'namespaces' list must be non-empty strings."
             )
-        if top_k <= 0:
+        if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
-        if threshold is not None and (
-            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
-        ):
+        if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
             raise InvalidInputError(
                 "'threshold' must be a number between 0 and 1, or None."
             )
+        if not isinstance(kiosk_mode, bool):
+            raise InvalidInputError("'kiosk_mode' must be a boolean.")
 
         query_type = "vector" if isinstance(query, list) else "text"
         logger.info(
@@ -146,15 +146,16 @@ class AsyncSearch(AsyncBaseResource):
                 "All items in 'namespaces' list must be non-empty strings."
             )
 
-        if top_k <= 0:
+        if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
 
-        if threshold is not None and (
-            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
-        ):
+        if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
             raise InvalidInputError(
                 "'threshold' must be a number between 0 and 1, or None."
             )
+
+        if not isinstance(kiosk_mode, bool):
+            raise InvalidInputError("'kiosk_mode' must be a boolean.")
 
         logger.info(
             f"Attempting to search in namespaces {namespaces} with query '{query}'"

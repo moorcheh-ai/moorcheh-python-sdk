@@ -71,15 +71,15 @@ class Answer(BaseResource):
             "Attempting to get generative answer for query in namespace"
             f" '{namespace}'..."
         )
-        if top_k <= 0:
+        if not ai_model:
+            raise InvalidInputError("Argument 'ai_model' cannot be empty.")
+        if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
-        if not (0 <= temperature <= 1):
+        if not isinstance(temperature, (int, float)) or not (0 <= temperature <= 1):
             raise InvalidInputError(
                 "'temperature' must be a number between 0.0 and 1.0."
             )
-        if threshold is not None and (
-            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
-        ):
+        if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
             raise InvalidInputError(
                 "'threshold' must be a number between 0 and 1, or None."
             )
@@ -179,15 +179,15 @@ class AsyncAnswer(AsyncBaseResource):
             APIError: For other API errors.
             MoorchehError: For network issues.
         """
-        if top_k <= 0:
-            raise InvalidInputError("'top_k' must be a positive integer.")
 
-        if not (0 <= temperature <= 1):
+        if not ai_model:
+            raise InvalidInputError("Argument 'ai_model' cannot be empty.")
+        if not isinstance(top_k, int) or top_k <= 0:
+            raise InvalidInputError("'top_k' must be a positive integer.")
+        if not isinstance(temperature, (int, float)) or not (0 <= temperature <= 1):
             raise InvalidInputError("'temperature' must be between 0.0 and 1.0.")
 
-        if threshold is not None and (
-            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
-        ):
+        if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
             raise InvalidInputError(
                 "'threshold' must be a number between 0 and 1, or None."
             )
