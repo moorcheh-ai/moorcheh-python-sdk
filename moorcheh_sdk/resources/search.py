@@ -101,11 +101,11 @@ class Search(BaseResource):
 
 
 class AsyncSearch(AsyncBaseResource):
-    @required_args(["namespaces", "query"], types={"namespaces": list, "query": str})
+    @required_args(["namespaces", "query"], types={"namespaces": list, "query": (str, list)})
     async def query(
         self,
         namespaces: list[str],
-        query: str,
+        query: str | list[float],
         top_k: int = 10,
         threshold: float | None = None,
         kiosk_mode: bool = False,
@@ -115,7 +115,7 @@ class AsyncSearch(AsyncBaseResource):
 
         Args:
             namespaces: A list of namespace names to search within.
-            query: The search query string.
+            query: The search query (text string or vector list).
             top_k: The number of top results to return (default: 10).
             threshold: Minimum similarity score (0-1). Defaults to 0.25.
             kiosk_mode: Whether to enable kiosk mode (default: False).
@@ -155,9 +155,10 @@ class AsyncSearch(AsyncBaseResource):
         if not isinstance(kiosk_mode, bool):
             raise InvalidInputError("'kiosk_mode' must be a boolean.")
 
+        query_type = "vector" if isinstance(query, list) else "text"
         logger.info(
-            f"Attempting to search in namespaces {namespaces} with query '{query}'"
-            f" (top_k={top_k}, threshold={threshold}, kiosk={kiosk_mode})..."
+            f"Attempting {query_type} search in namespace(s) '{', '.join(namespaces)}'"
+            f" with top_k={top_k}, threshold={threshold}, kiosk={kiosk_mode}..."
         )
 
         payload: dict[str, Any] = {
