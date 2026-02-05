@@ -263,8 +263,8 @@ class Documents(BaseResource):
         Uploads a file directly to a text-based namespace.
 
         The file is automatically processed to extract text content and generate
-        embeddings. Files are queued for processing. Files larger than 5MB are
-        uploaded via a pre-signed S3 URL.
+        embeddings. Files are queued for processing and uploaded via a
+        pre-signed S3 URL.
 
         Args:
             namespace_name: The name of the target text-based namespace.
@@ -302,8 +302,6 @@ class Documents(BaseResource):
         """
         # Allowed file extensions
         ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
-        # 5MB threshold for direct upload vs presigned URL
-        DIRECT_UPLOAD_MAX = 10 * 512 * 1024  # 5MB in bytes
         MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024  # 5GB in bytes
 
         # Handle file path or file-like object
@@ -383,80 +381,44 @@ class Documents(BaseResource):
             f" '{namespace_name}'..."
         )
 
-        if file_size is None or file_size > DIRECT_UPLOAD_MAX:
-            use_aws_s3 = True
-            endpoint = f"/namespaces/{namespace_name}/upload-url"
-        else:
-            use_aws_s3 = False
-            endpoint = f"/namespaces/{namespace_name}/upload-file"
+        endpoint = f"/namespaces/{namespace_name}/upload-url"
 
         try:
-            if use_aws_s3:
-                response_data = self._client._request(
-                    "POST",
-                    endpoint,
-                    json_data={"fileName": file_name},
+            response_data = self._client._request(
+                "POST",
+                endpoint,
+                json_data={"fileName": file_name},
+            )
+
+            upload_url = response_data.get("uploadUrl")
+            content_type = response_data.get("contentType")
+            if not upload_url or not content_type:
+                raise APIError(
+                    message="Upload URL response missing 'uploadUrl' or 'contentType'."
                 )
 
-                upload_url = response_data.get("uploadUrl")
-                content_type = response_data.get("contentType")
-                if not upload_url or not content_type:
-                    raise APIError(
-                        message="Upload URL response missing 'uploadUrl' or 'contentType'."
-                    )
-                
-                response = httpx.put(
-                    upload_url,
-                    content=file_obj,
-                    headers={"Content-Type": content_type},
-                    timeout=self._client.timeout,
-                )
-
-                logger.info(
-                    f"File '{file_name}' uploaded successfully to namespace"
-                    f" '{namespace_name}' via presigned URL"
-                )
-            else:
-                # Prepare multipart/form-data
-                # httpx will automatically set Content-Type: multipart/form-data when files are provided
-                files = {"file": (file_name, file_obj, None)}
-
-                # Use the SDK's request method - it will handle retries and httpx will set multipart/form-data
-                response = self._client.request(
-                    method="POST",
-                    path=endpoint,
-                    files=files,
-                )
+            response = httpx.put(
+                upload_url,
+                content=file_obj,
+                headers={"Content-Type": content_type},
+                timeout=self._client.timeout,
+            )
 
             logger.debug(f"Received response with status code: {response.status_code}")
 
             # Process response
             if response.status_code == 200:
-                if use_aws_s3:
-                    # For S3 uploads, we construct a standard success response
-                    return cast(FileUploadResponse, {
-                        "success": True,
-                        "message": "File uploaded successfully",
-                        "namespace": namespace_name,
-                        "fileName": file_name,
-                        "fileSize": file_size or 0,
-                    })
-                else:
-                    try:
-                        response_data = response.json()
-                        logger.info(
-                            f"File '{file_name}' uploaded successfully to namespace"
-                            f" '{namespace_name}'"
-                        )
-                        return cast(FileUploadResponse, response_data)
-                    except Exception as json_e:
-                        logger.error(
-                            f"Error decoding JSON response: {json_e}", exc_info=True
-                        )
-                        raise APIError(
-                            status_code=response.status_code,
-                            message=f"Failed to decode JSON response: {response.text}",
-                        ) from json_e
+                logger.info(
+                    f"File '{file_name}' uploaded successfully to namespace"
+                    f" '{namespace_name}' via presigned URL"
+                )
+                return cast(FileUploadResponse, {
+                    "success": True,
+                    "message": "File uploaded successfully",
+                    "namespace": namespace_name,
+                    "fileName": file_name,
+                    "fileSize": file_size or 0,
+                })
             else:
                 # Handle error responses
                 logger.warning(
