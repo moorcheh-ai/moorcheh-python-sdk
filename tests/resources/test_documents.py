@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from moorcheh_sdk import (
@@ -188,6 +190,11 @@ def test_upload_file_success(client, mocker, mock_response, tmp_path):
     test_file = tmp_path / "test_document.pdf"
     test_file.write_bytes(b"PDF content here")
 
+    upload_url_data = {
+        "uploadUrl": "https://example.com/upload",
+        "contentType": "application/pdf",
+    }
+
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
@@ -195,22 +202,23 @@ def test_upload_file_success(client, mocker, mock_response, tmp_path):
         "fileName": "test_document.pdf",
         "fileSize": len(test_file.read_bytes()),
     }
-    mock_resp = mock_response(200, json_data=expected_response)
-    client._mock_httpx_instance.request.return_value = mock_resp
+    client._mock_httpx_instance.request.side_effect = [
+        mock_response(200, json_data=upload_url_data),
+        mock_response(200, text_data=""),
+    ]
 
     result = client.documents.upload_file(
         namespace_name=TEST_NAMESPACE, file_path=str(test_file)
     )
 
-    # Verify the request was made with files parameter
-    # The request goes through client.request() which calls the base client's request
-    # We need to check the actual httpx client's request call
-    client._mock_httpx_instance.request.assert_called_once()
-    call_args = client._mock_httpx_instance.request.call_args
-    # httpx.Client.request is called with method, url, **kwargs
-    assert call_args.kwargs["method"] == "POST"
-    assert call_args.kwargs["url"] == f"/namespaces/{TEST_NAMESPACE}/upload-file"
-    assert "files" in call_args.kwargs
+    assert client._mock_httpx_instance.request.call_count == 2
+    first_call = client._mock_httpx_instance.request.call_args_list[0]
+    assert first_call.kwargs["method"] == "POST"
+    assert first_call.kwargs["url"] == f"/namespaces/{TEST_NAMESPACE}/upload-url"
+
+    second_call = client._mock_httpx_instance.request.call_args_list[1]
+    assert second_call.kwargs["method"] == "PUT"
+    assert second_call.kwargs["url"] == upload_url_data["uploadUrl"]
     assert result == expected_response
 
 
@@ -219,6 +227,11 @@ def test_upload_file_with_path_object(client, mocker, mock_response, tmp_path):
     test_file = tmp_path / "document.txt"
     test_file.write_text("Text content")
 
+    upload_url_data = {
+        "uploadUrl": "https://example.com/upload",
+        "contentType": "text/plain",
+    }
+
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
@@ -226,15 +239,17 @@ def test_upload_file_with_path_object(client, mocker, mock_response, tmp_path):
         "fileName": "document.txt",
         "fileSize": len(test_file.read_bytes()),
     }
-    mock_resp = mock_response(200, json_data=expected_response)
-    client._mock_httpx_instance.request.return_value = mock_resp
+    client._mock_httpx_instance.request.side_effect = [
+        mock_response(200, json_data=upload_url_data),
+        mock_response(200, text_data=""),
+    ]
 
     result = client.documents.upload_file(
         namespace_name=TEST_NAMESPACE, file_path=test_file
     )
 
     assert result == expected_response
-    client._mock_httpx_instance.request.assert_called_once()
+    assert client._mock_httpx_instance.request.call_count == 2
 
 
 def test_upload_file_with_file_like_object(client, mocker, mock_response, tmp_path):
@@ -242,23 +257,31 @@ def test_upload_file_with_file_like_object(client, mocker, mock_response, tmp_pa
     test_file = tmp_path / "data.json"
     test_file.write_text('{"key": "value"}')
 
-    expected_response = {
-        "success": True,
-        "message": "File uploaded successfully",
-        "namespace": TEST_NAMESPACE,
-        "fileName": "data.json",
-        "fileSize": len(test_file.read_bytes()),
+    upload_url_data = {
+        "uploadUrl": "https://example.com/upload",
+        "contentType": "application/json",
     }
-    mock_resp = mock_response(200, json_data=expected_response)
-    client._mock_httpx_instance.request.return_value = mock_resp
+
+    client._mock_httpx_instance.request.side_effect = [
+        mock_response(200, json_data=upload_url_data),
+        mock_response(200, text_data=""),
+    ]
 
     with open(test_file, "rb") as f:
+        # The SDK uses the file handle's name (full path), so set expected here.
+        expected_response = {
+            "success": True,
+            "message": "File uploaded successfully",
+            "namespace": TEST_NAMESPACE,
+            "fileName": f.name,
+            "fileSize": len(test_file.read_bytes()),
+        }
         result = client.documents.upload_file(
             namespace_name=TEST_NAMESPACE, file_path=f
         )
 
     assert result == expected_response
-    client._mock_httpx_instance.request.assert_called_once()
+    assert client._mock_httpx_instance.request.call_count == 2
 
 
 def test_upload_file_not_found(client):
@@ -297,6 +320,10 @@ def test_upload_file_valid_extensions(
     test_file = tmp_path / f"test{file_extension}"
     test_file.write_bytes(b"content")
 
+    upload_url_data = {
+        "uploadUrl": "https://example.com/upload",
+        "contentType": "application/json",
+    }
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
@@ -304,29 +331,32 @@ def test_upload_file_valid_extensions(
         "fileName": f"test{file_extension}",
         "fileSize": len(test_file.read_bytes()),
     }
-    mock_resp = mock_response(200, json_data=expected_response)
-    client._mock_httpx_instance.request.return_value = mock_resp
+    client._mock_httpx_instance.request.side_effect = [
+        mock_response(200, json_data=upload_url_data),
+        mock_response(200, text_data=""),
+    ]
 
     result = client.documents.upload_file(
         namespace_name=TEST_NAMESPACE, file_path=str(test_file)
     )
 
     assert result == expected_response
-    client._mock_httpx_instance.request.assert_called_once()
+    assert client._mock_httpx_instance.request.call_count == 2
 
 
 def test_upload_file_too_large(client, tmp_path):
-    """Test file upload with file exceeding 10MB limit."""
-    # Create a file larger than 10MB
+    """Test file upload with file exceeding 5GB limit."""
+    # Create a file larger than 5GB
     test_file = tmp_path / "large_file.pdf"
-    # Write 11MB of data
-    large_content = b"x" * (11 * 1024 * 1024)
-    test_file.write_bytes(large_content)
+    test_file.write_bytes(b"x")
+    # Write 6GB of data
+    too_large_size = 6 * 1024 * 1024 * 1024
 
-    with pytest.raises(InvalidInputError, match="exceeds maximum allowed size"):
-        client.documents.upload_file(
-            namespace_name=TEST_NAMESPACE, file_path=str(test_file)
-        )
+    with patch("pathlib.Path.stat", return_value=MagicMock(st_size=too_large_size)):
+        with pytest.raises(InvalidInputError, match="exceeds maximum allowed size"):
+            client.documents.upload_file(
+                namespace_name=TEST_NAMESPACE, file_path=str(test_file)
+            )
     client._mock_httpx_instance.request.assert_not_called()
 
 
@@ -365,6 +395,10 @@ def test_upload_file_namespace_not_found(client, mocker, mock_response, tmp_path
             namespace_name=TEST_NAMESPACE, file_path=str(test_file)
         )
     client._mock_httpx_instance.request.assert_called_once()
+    assert (
+        client._mock_httpx_instance.request.call_args.kwargs["url"]
+        == f"/namespaces/{TEST_NAMESPACE}/upload-url"
+    )
 
 
 def test_upload_file_authentication_error(client, mocker, mock_response, tmp_path):
@@ -381,6 +415,10 @@ def test_upload_file_authentication_error(client, mocker, mock_response, tmp_pat
             namespace_name=TEST_NAMESPACE, file_path=str(test_file)
         )
     client._mock_httpx_instance.request.assert_called_once()
+    assert (
+        client._mock_httpx_instance.request.call_args.kwargs["url"]
+        == f"/namespaces/{TEST_NAMESPACE}/upload-url"
+    )
 
 
 def test_upload_file_api_error(client, mocker, mock_response, tmp_path):
@@ -400,6 +438,10 @@ def test_upload_file_api_error(client, mocker, mock_response, tmp_path):
         )
     # The client retries on 500 errors, so it will be called multiple times
     assert client._mock_httpx_instance.request.call_count >= 1
+    assert (
+        client._mock_httpx_instance.request.call_args.kwargs["url"]
+        == f"/namespaces/{TEST_NAMESPACE}/upload-url"
+    )
 
 
 def test_upload_file_invalid_input_error(client, mocker, mock_response, tmp_path):
@@ -416,3 +458,7 @@ def test_upload_file_invalid_input_error(client, mocker, mock_response, tmp_path
             namespace_name=TEST_NAMESPACE, file_path=str(test_file)
         )
     client._mock_httpx_instance.request.assert_called_once()
+    assert (
+        client._mock_httpx_instance.request.call_args.kwargs["url"]
+        == f"/namespaces/{TEST_NAMESPACE}/upload-url"
+    )

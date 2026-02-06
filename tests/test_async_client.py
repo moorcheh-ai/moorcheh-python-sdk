@@ -164,6 +164,10 @@ async def test_upload_file_success(client, tmp_path):
     test_file = tmp_path / "test_document.pdf"
     test_file.write_bytes(b"PDF content here")
 
+    upload_url_data = {
+        "uploadUrl": "https://example.com/upload",
+        "contentType": "application/pdf",
+    }
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
@@ -173,20 +177,31 @@ async def test_upload_file_success(client, tmp_path):
     }
 
     with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
-        mock_request.return_value = MagicMock(
-            status_code=200, json=lambda: expected_response
-        )
+        mock_request.side_effect = [
+            MagicMock(
+                status_code=200,
+                json=lambda: upload_url_data,
+                content=b"{}",
+                headers={"content-type": "application/json"},
+            ),
+            MagicMock(status_code=200, text=""),
+        ]
 
         response = await client.documents.upload_file(
             namespace_name="test", file_path=str(test_file)
         )
 
         assert response == expected_response
-        mock_request.assert_called_once()
-        args, kwargs = mock_request.call_args
-        assert kwargs["method"] == "POST"
-        assert kwargs["path"] == "/namespaces/test/upload-file"
-        assert "files" in kwargs
+        assert mock_request.call_count == 2
+        first_call = mock_request.call_args_list[0]
+        assert first_call.kwargs["method"] == "POST"
+        assert first_call.kwargs["path"] == "/namespaces/test/upload-url"
+        assert first_call.kwargs["json"] == {"fileName": "test_document.pdf"}
+
+        second_call = mock_request.call_args_list[1]
+        assert second_call.kwargs["method"] == "PUT"
+        assert second_call.kwargs["path"] == upload_url_data["uploadUrl"]
+
 
 
 @pytest.mark.asyncio
@@ -195,6 +210,10 @@ async def test_upload_file_with_path_object(client, tmp_path):
     test_file = tmp_path / "document.txt"
     test_file.write_text("Text content")
 
+    upload_url_data = {
+        "uploadUrl": "https://example.com/upload",
+        "contentType": "text/plain",
+    }
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
@@ -204,16 +223,22 @@ async def test_upload_file_with_path_object(client, tmp_path):
     }
 
     with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
-        mock_request.return_value = MagicMock(
-            status_code=200, json=lambda: expected_response
-        )
+        mock_request.side_effect = [
+            MagicMock(
+                status_code=200,
+                json=lambda: upload_url_data,
+                content=b"{}",
+                headers={"content-type": "application/json"},
+            ),
+            MagicMock(status_code=200, text=""),
+        ]
 
         response = await client.documents.upload_file(
             namespace_name="test", file_path=test_file
         )
 
         assert response == expected_response
-        mock_request.assert_called_once()
+        assert mock_request.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -222,26 +247,36 @@ async def test_upload_file_with_file_like_object(client, tmp_path):
     test_file = tmp_path / "data.json"
     test_file.write_text('{"key": "value"}')
 
-    expected_response = {
-        "success": True,
-        "message": "File uploaded successfully",
-        "namespace": "test",
-        "fileName": "data.json",
-        "fileSize": len(test_file.read_bytes()),
+    upload_url_data = {
+        "uploadUrl": "https://example.com/upload",
+        "contentType": "application/json",
     }
 
     with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
-        mock_request.return_value = MagicMock(
-            status_code=200, json=lambda: expected_response
-        )
+        mock_request.side_effect = [
+            MagicMock(
+                status_code=200,
+                json=lambda: upload_url_data,
+                content=b"{}",
+                headers={"content-type": "application/json"},
+            ),
+            MagicMock(status_code=200, text=""),
+        ]
 
         with open(test_file, "rb") as f:
+            expected_response = {
+                "success": True,
+                "message": "File uploaded successfully",
+                "namespace": "test",
+                "fileName": f.name,
+                "fileSize": len(test_file.read_bytes()),
+            }
             response = await client.documents.upload_file(
                 namespace_name="test", file_path=f
             )
 
         assert response == expected_response
-        mock_request.assert_called_once()
+        assert mock_request.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -279,6 +314,10 @@ async def test_upload_file_valid_extensions(client, tmp_path, file_extension):
     test_file = tmp_path / f"test{file_extension}"
     test_file.write_bytes(b"content")
 
+    upload_url_data = {
+        "uploadUrl": "https://example.com/upload",
+        "contentType": "application/json",
+    }
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
@@ -288,29 +327,38 @@ async def test_upload_file_valid_extensions(client, tmp_path, file_extension):
     }
 
     with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
-        mock_request.return_value = MagicMock(
-            status_code=200, json=lambda: expected_response
-        )
+        mock_request.side_effect = [
+            MagicMock(
+                status_code=200,
+                json=lambda: upload_url_data,
+                content=b"{}",
+                headers={"content-type": "application/json"},
+            ),
+            MagicMock(status_code=200, text=""),
+        ]
 
         response = await client.documents.upload_file(
             namespace_name="test", file_path=str(test_file)
         )
 
         assert response == expected_response
-        mock_request.assert_called_once()
+        assert mock_request.call_count == 2
 
 
 @pytest.mark.asyncio
 async def test_upload_file_too_large(client, tmp_path):
-    """Test async file upload with file exceeding 10MB limit."""
+    """Test async file upload with file exceeding 5GB limit."""
+    # Create a file larger than 5GB
     test_file = tmp_path / "large_file.pdf"
-    large_content = b"x" * (11 * 1024 * 1024)  # 11MB
-    test_file.write_bytes(large_content)
+    test_file.write_bytes(b"x")
+    # Write 6GB of data
+    too_large_size = 6 * 1024 * 1024 * 1024
 
-    with pytest.raises(InvalidInputError, match="exceeds maximum allowed size"):
-        await client.documents.upload_file(
-            namespace_name="test", file_path=str(test_file)
-        )
+    with patch("pathlib.Path.stat", return_value=MagicMock(st_size=too_large_size)):
+        with pytest.raises(InvalidInputError, match="exceeds maximum allowed size"):
+            await client.documents.upload_file(
+                namespace_name="test", file_path=str(test_file)
+            )
 
 
 @pytest.mark.asyncio
@@ -332,6 +380,8 @@ async def test_upload_file_namespace_not_found(client, tmp_path):
             await client.documents.upload_file(
                 namespace_name="test", file_path=str(test_file)
             )
+        mock_request.assert_called_once()
+        assert mock_request.call_args.kwargs["path"] == "/namespaces/test/upload-url"
 
 
 @pytest.mark.asyncio
@@ -353,6 +403,8 @@ async def test_upload_file_authentication_error(client, tmp_path):
             await client.documents.upload_file(
                 namespace_name="test", file_path=str(test_file)
             )
+        mock_request.assert_called_once()
+        assert mock_request.call_args.kwargs["path"] == "/namespaces/test/upload-url"
 
 
 @pytest.mark.asyncio
@@ -384,3 +436,4 @@ async def test_upload_file_api_error(client, tmp_path):
             await client.documents.upload_file(
                 namespace_name="test", file_path=str(test_file)
             )
+        assert mock_request.call_args.kwargs["path"] == "/namespaces/test/upload-url"
