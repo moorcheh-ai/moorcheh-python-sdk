@@ -11,20 +11,14 @@ logger = setup_logging(__name__)
 
 class Search(BaseResource):
     @required_args(
-        ["namespaces", "query", "top_k", "kiosk_mode"],
-        types={
-            "namespaces": list,
-            "query": (str, list),
-            "top_k": int,
-            "kiosk_mode": bool,
-        },
+        ["namespaces", "query"], types={"namespaces": list, "query": (str, list)}
     )
     def query(
         self,
         namespaces: list[str],
         query: str | list[float],
         top_k: int = 10,
-        threshold: float | None = 0.25,
+        threshold: float | None = None,
         kiosk_mode: bool = False,
     ) -> SearchResponse:
         """
@@ -64,14 +58,28 @@ class Search(BaseResource):
             raise InvalidInputError(
                 "All items in 'namespaces' list must be non-empty strings."
             )
-        if top_k <= 0:
+        if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
-        if threshold is not None and (
-            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
-        ):
-            raise InvalidInputError(
-                "'threshold' must be a number between 0 and 1, or None."
-            )
+        if threshold is not None:
+            if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
+                raise InvalidInputError(
+                    "'threshold' must be a number between 0 and 1, or None."
+                )
+            if not kiosk_mode:
+                logger.warning(
+                    "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
+                )
+        if not isinstance(kiosk_mode, bool):
+            raise InvalidInputError("'kiosk_mode' must be a boolean.")
+        if isinstance(query, list):
+            if not query:
+                raise InvalidInputError(
+                    "'query' cannot be an empty list for vector search."
+                )
+            if not all(isinstance(x, (int, float)) for x in query):
+                raise InvalidInputError(
+                    "When 'query' is a list (vector search), all elements must be numbers."
+                )
 
         query_type = "vector" if isinstance(query, list) else "text"
         logger.info(
@@ -85,8 +93,9 @@ class Search(BaseResource):
             "top_k": top_k,
             "kiosk_mode": kiosk_mode,
         }
-        if kiosk_mode and threshold is not None:
-            payload["threshold"] = threshold
+        # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
+        if kiosk_mode:
+            payload["threshold"] = threshold if threshold is not None else 0.25
 
         logger.debug(f"Search payload: {payload}")
 
@@ -108,21 +117,14 @@ class Search(BaseResource):
 
 class AsyncSearch(AsyncBaseResource):
     @required_args(
-        ["namespaces", "query", "top_k", "threshold", "kiosk_mode"],
-        types={
-            "namespaces": list,
-            "query": str,
-            "top_k": int,
-            "threshold": (int, float, type(None)),
-            "kiosk_mode": bool,
-        },
+        ["namespaces", "query"], types={"namespaces": list, "query": (str, list)}
     )
     async def query(
         self,
         namespaces: list[str],
-        query: str,
+        query: str | list[float],
         top_k: int = 10,
-        threshold: float | None = 0.25,
+        threshold: float | None = None,
         kiosk_mode: bool = False,
     ) -> SearchResponse:
         """
@@ -130,7 +132,7 @@ class AsyncSearch(AsyncBaseResource):
 
         Args:
             namespaces: A list of namespace names to search within.
-            query: The search query string.
+            query: The search query (text string or vector list).
             top_k: The number of top results to return (default: 10).
             threshold: Minimum similarity score (0-1). Defaults to 0.25.
             kiosk_mode: Whether to enable kiosk mode (default: False).
@@ -146,7 +148,6 @@ class AsyncSearch(AsyncBaseResource):
                         "score": float,
                         "text": str,
                         "metadata": dict,
-                        "namespace": str
                     }
                 ],
                 "execution_time": float
@@ -154,6 +155,7 @@ class AsyncSearch(AsyncBaseResource):
 
         Raises:
             InvalidInputError: If input is invalid.
+            NamespaceNotFound: If a namespace does not exist (404).
             AuthenticationError: If authentication fails (401/403).
             APIError: For other API errors.
             MoorchehError: For network issues.
@@ -162,20 +164,33 @@ class AsyncSearch(AsyncBaseResource):
             raise InvalidInputError(
                 "All items in 'namespaces' list must be non-empty strings."
             )
-
-        if top_k <= 0:
+        if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
+        if threshold is not None:
+            if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
+                raise InvalidInputError(
+                    "'threshold' must be a number between 0 and 1, or None."
+                )
+            if not kiosk_mode:
+                logger.warning(
+                    "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
+                )
+        if not isinstance(kiosk_mode, bool):
+            raise InvalidInputError("'kiosk_mode' must be a boolean.")
+        if isinstance(query, list):
+            if not query:
+                raise InvalidInputError(
+                    "'query' cannot be an empty list for vector search."
+                )
+            if not all(isinstance(x, (int, float)) for x in query):
+                raise InvalidInputError(
+                    "When 'query' is a list (vector search), all elements must be numbers."
+                )
 
-        if threshold is not None and (
-            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
-        ):
-            raise InvalidInputError(
-                "'threshold' must be a number between 0 and 1, or None."
-            )
-
+        query_type = "vector" if isinstance(query, list) else "text"
         logger.info(
-            f"Attempting to search in namespaces {namespaces} with query '{query}'"
-            f" (top_k={top_k}, threshold={threshold}, kiosk={kiosk_mode})..."
+            f"Attempting {query_type} search in namespace(s) '{', '.join(namespaces)}'"
+            f" with top_k={top_k}, threshold={threshold}, kiosk={kiosk_mode}..."
         )
 
         payload: dict[str, Any] = {
@@ -184,8 +199,11 @@ class AsyncSearch(AsyncBaseResource):
             "top_k": top_k,
             "kiosk_mode": kiosk_mode,
         }
-        if kiosk_mode and threshold is not None:
-            payload["threshold"] = threshold
+        # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
+        if kiosk_mode:
+            payload["threshold"] = threshold if threshold is not None else 0.25
+
+        logger.debug(f"Search payload: {payload}")
 
         response_data = await self._client._request(
             method="POST",

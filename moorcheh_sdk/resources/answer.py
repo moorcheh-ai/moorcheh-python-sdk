@@ -10,16 +10,7 @@ logger = setup_logging(__name__)
 
 
 class Answer(BaseResource):
-    @required_args(
-        ["namespace", "query", "top_k", "ai_model", "temperature"],
-        types={
-            "namespace": str,
-            "query": str,
-            "top_k": int,
-            "ai_model": str,
-            "temperature": (int, float),
-        },
-    )
+    @required_args(["namespace", "query"], types={"namespace": str, "query": str})
     def generate(
         self,
         namespace: str,
@@ -30,7 +21,7 @@ class Answer(BaseResource):
         temperature: float = 0.7,
         header_prompt: str | None = None,
         footer_prompt: str | None = None,
-        threshold: float = 0.25,
+        threshold: float | None = None,
         kiosk_mode: bool = False,
     ) -> AnswerResponse:
         """
@@ -80,18 +71,23 @@ class Answer(BaseResource):
             "Attempting to get generative answer for query in namespace"
             f" '{namespace}'..."
         )
-        if top_k <= 0:
+        if not ai_model:
+            raise InvalidInputError("Argument 'ai_model' cannot be empty.")
+        if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
-        if not (0 <= temperature <= 1):
+        if not isinstance(temperature, (int, float)) or not (0 <= temperature <= 1):
             raise InvalidInputError(
                 "'temperature' must be a number between 0.0 and 1.0."
             )
-        if threshold is not None and (
-            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
-        ):
-            raise InvalidInputError(
-                "'threshold' must be a number between 0 and 1, or None."
-            )
+        if threshold is not None:
+            if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
+                raise InvalidInputError(
+                    "'threshold' must be a number between 0 and 1, or None."
+                )
+            if not kiosk_mode:
+                logger.warning(
+                    "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
+                )
 
         payload: dict[str, Any] = {
             "namespace": namespace,
@@ -105,8 +101,9 @@ class Answer(BaseResource):
             "footerPrompt": footer_prompt if footer_prompt is not None else "",
             "kiosk_mode": kiosk_mode,
         }
-        if kiosk_mode and threshold is not None:
-            payload["threshold"] = threshold
+        # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
+        if kiosk_mode:
+            payload["threshold"] = threshold if threshold is not None else 0.25
         logger.debug(f"Generative answer payload: {payload}")
 
         response_data = self._client._request(
@@ -126,16 +123,7 @@ class Answer(BaseResource):
 
 
 class AsyncAnswer(AsyncBaseResource):
-    @required_args(
-        ["namespace", "query", "top_k", "ai_model", "temperature"],
-        types={
-            "namespace": str,
-            "query": str,
-            "top_k": int,
-            "ai_model": str,
-            "temperature": (int, float),
-        },
-    )
+    @required_args(["namespace", "query"], types={"namespace": str, "query": str})
     async def generate(
         self,
         namespace: str,
@@ -146,7 +134,7 @@ class AsyncAnswer(AsyncBaseResource):
         temperature: float = 0.7,
         header_prompt: str | None = None,
         footer_prompt: str | None = None,
-        threshold: float = 0.25,
+        threshold: float | None = None,
         kiosk_mode: bool = False,
     ) -> AnswerResponse:
         """
@@ -197,18 +185,22 @@ class AsyncAnswer(AsyncBaseResource):
             APIError: For other API errors.
             MoorchehError: For network issues.
         """
-        if top_k <= 0:
+
+        if not ai_model:
+            raise InvalidInputError("Argument 'ai_model' cannot be empty.")
+        if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
-
-        if not (0 <= temperature <= 1):
+        if not isinstance(temperature, (int, float)) or not (0 <= temperature <= 1):
             raise InvalidInputError("'temperature' must be between 0.0 and 1.0.")
-
-        if threshold is not None and (
-            not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1)
-        ):
-            raise InvalidInputError(
-                "'threshold' must be a number between 0 and 1, or None."
-            )
+        if threshold is not None:
+            if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
+                raise InvalidInputError(
+                    "'threshold' must be a number between 0 and 1, or None."
+                )
+            if not kiosk_mode:
+                logger.warning(
+                    "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
+                )
 
         logger.info(
             f"Attempting to generate answer for query '{query}' in namespace"
@@ -227,8 +219,9 @@ class AsyncAnswer(AsyncBaseResource):
             "footerPrompt": footer_prompt if footer_prompt is not None else "",
             "kiosk_mode": kiosk_mode,
         }
-        if kiosk_mode and threshold is not None:
-            payload["threshold"] = threshold
+        # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
+        if kiosk_mode:
+            payload["threshold"] = threshold if threshold is not None else 0.25
         logger.debug(f"Generative answer payload: {payload}")
 
         response_data = await self._client._request(
