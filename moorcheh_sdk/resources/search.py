@@ -10,7 +10,9 @@ logger = setup_logging(__name__)
 
 
 class Search(BaseResource):
-    @required_args(["namespaces", "query"], types={"namespaces": list, "query": (str, list)})
+    @required_args(
+        ["namespaces", "query"], types={"namespaces": list, "query": (str, list)}
+    )
     def query(
         self,
         namespaces: list[str],
@@ -53,19 +55,27 @@ class Search(BaseResource):
             MoorchehError: For network issues.
         """
         if not all(isinstance(ns, str) and ns for ns in namespaces):
-            raise InvalidInputError("All items in 'namespaces' list must be non-empty strings.")
+            raise InvalidInputError(
+                "All items in 'namespaces' list must be non-empty strings."
+            )
         if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
         if threshold is not None:
             if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
-                raise InvalidInputError("'threshold' must be a number between 0 and 1, or None.")
+                raise InvalidInputError(
+                    "'threshold' must be a number between 0 and 1, or None."
+                )
             if not kiosk_mode:
-                logger.warning("'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored.")
+                logger.warning(
+                    "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
+                )
         if not isinstance(kiosk_mode, bool):
             raise InvalidInputError("'kiosk_mode' must be a boolean.")
         if isinstance(query, list):
             if not query:
-                raise InvalidInputError("'query' cannot be an empty list for vector search.")
+                raise InvalidInputError(
+                    "'query' cannot be an empty list for vector search."
+                )
             if not all(isinstance(x, (int, float)) for x in query):
                 raise InvalidInputError(
                     "When 'query' is a list (vector search), all elements must be numbers."
@@ -106,7 +116,9 @@ class Search(BaseResource):
 
 
 class AsyncSearch(AsyncBaseResource):
-    @required_args(["namespaces", "query"], types={"namespaces": list, "query": (str, list)})
+    @required_args(
+        ["namespaces", "query"], types={"namespaces": list, "query": (str, list)}
+    )
     async def query(
         self,
         namespaces: list[str],
@@ -149,19 +161,27 @@ class AsyncSearch(AsyncBaseResource):
             MoorchehError: For network issues.
         """
         if not all(isinstance(ns, str) and ns for ns in namespaces):
-            raise InvalidInputError("All items in 'namespaces' list must be non-empty strings.")
+            raise InvalidInputError(
+                "All items in 'namespaces' list must be non-empty strings."
+            )
         if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
         if threshold is not None:
             if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
-                raise InvalidInputError("'threshold' must be a number between 0 and 1, or None.")
+                raise InvalidInputError(
+                    "'threshold' must be a number between 0 and 1, or None."
+                )
             if not kiosk_mode:
-                logger.warning("'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored.")
+                logger.warning(
+                    "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
+                )
         if not isinstance(kiosk_mode, bool):
             raise InvalidInputError("'kiosk_mode' must be a boolean.")
         if isinstance(query, list):
             if not query:
-                raise InvalidInputError("'query' cannot be an empty list for vector search.")
+                raise InvalidInputError(
+                    "'query' cannot be an empty list for vector search."
+                )
             if not all(isinstance(x, (int, float)) for x in query):
                 raise InvalidInputError(
                     "When 'query' is a list (vector search), all elements must be numbers."

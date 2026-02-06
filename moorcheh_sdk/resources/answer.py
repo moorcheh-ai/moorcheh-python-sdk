@@ -76,12 +76,18 @@ class Answer(BaseResource):
         if not isinstance(top_k, int) or top_k <= 0:
             raise InvalidInputError("'top_k' must be a positive integer.")
         if not isinstance(temperature, (int, float)) or not (0 <= temperature <= 1):
-            raise InvalidInputError("'temperature' must be a number between 0.0 and 1.0.")
+            raise InvalidInputError(
+                "'temperature' must be a number between 0.0 and 1.0."
+            )
         if threshold is not None:
             if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
-                raise InvalidInputError("'threshold' must be a number between 0 and 1, or None.")
+                raise InvalidInputError(
+                    "'threshold' must be a number between 0 and 1, or None."
+                )
             if not kiosk_mode:
-                logger.warning("'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored.")
+                logger.warning(
+                    "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
+                )
 
         payload: dict[str, Any] = {
             "namespace": namespace,
@@ -188,9 +194,13 @@ class AsyncAnswer(AsyncBaseResource):
             raise InvalidInputError("'temperature' must be between 0.0 and 1.0.")
         if threshold is not None:
             if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
-                raise InvalidInputError("'threshold' must be a number between 0 and 1, or None.")
+                raise InvalidInputError(
+                    "'threshold' must be a number between 0 and 1, or None."
+                )
             if not kiosk_mode:
-                logger.warning("'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored.")
+                logger.warning(
+                    "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
+                )
 
         logger.info(
             f"Attempting to generate answer for query '{query}' in namespace"
