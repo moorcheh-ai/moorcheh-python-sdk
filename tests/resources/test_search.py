@@ -151,6 +151,23 @@ def test_search_invalid_input_server_side(client, mocker, mock_response):
     client._mock_httpx_instance.request.assert_called_once()
 
 
+def test_search_vector_empty_list_raises(client):
+    """Vector search with empty list raises InvalidInputError (decorator or in-method)."""
+    with pytest.raises(InvalidInputError, match="cannot be empty"):
+        client.similarity_search.query(namespaces=[TEST_NAMESPACE], query=[])
+    client._mock_httpx_instance.request.assert_not_called()
+
+
+def test_search_vector_non_numeric_raises(client):
+    """Vector search with non-numeric elements raises InvalidInputError."""
+    with pytest.raises(InvalidInputError, match="all elements must be numbers"):
+        client.similarity_search.query(
+            namespaces=[TEST_NAMESPACE],
+            query=[0.1, 0.2, "bad", 0.4],
+        )
+    client._mock_httpx_instance.request.assert_not_called()
+
+
 def test_search_threshold_ignored_without_kiosk(client, mocker, mock_response):
     """Test that threshold is ignored when kiosk_mode is False."""
     query = "test"
