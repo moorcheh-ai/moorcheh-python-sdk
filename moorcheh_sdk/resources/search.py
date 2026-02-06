@@ -63,6 +63,13 @@ class Search(BaseResource):
                 logger.warning("'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored.")
         if not isinstance(kiosk_mode, bool):
             raise InvalidInputError("'kiosk_mode' must be a boolean.")
+        if isinstance(query, list):
+            if not query:
+                raise InvalidInputError("'query' cannot be an empty list for vector search.")
+            if not all(isinstance(x, (int, float)) for x in query):
+                raise InvalidInputError(
+                    "When 'query' is a list (vector search), all elements must be numbers."
+                )
 
         query_type = "vector" if isinstance(query, list) else "text"
         logger.info(
@@ -76,11 +83,9 @@ class Search(BaseResource):
             "top_k": top_k,
             "kiosk_mode": kiosk_mode,
         }
-
-        if threshold is None:
-            threshold = 0.25
+        # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
         if kiosk_mode:
-            payload["threshold"] = threshold
+            payload["threshold"] = threshold if threshold is not None else 0.25
 
         logger.debug(f"Search payload: {payload}")
 
@@ -131,7 +136,6 @@ class AsyncSearch(AsyncBaseResource):
                         "score": float,
                         "text": str,
                         "metadata": dict,
-                        "namespace": str
                     }
                 ],
                 "execution_time": float
@@ -139,6 +143,7 @@ class AsyncSearch(AsyncBaseResource):
 
         Raises:
             InvalidInputError: If input is invalid.
+            NamespaceNotFound: If a namespace does not exist (404).
             AuthenticationError: If authentication fails (401/403).
             APIError: For other API errors.
             MoorchehError: For network issues.
@@ -154,6 +159,13 @@ class AsyncSearch(AsyncBaseResource):
                 logger.warning("'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored.")
         if not isinstance(kiosk_mode, bool):
             raise InvalidInputError("'kiosk_mode' must be a boolean.")
+        if isinstance(query, list):
+            if not query:
+                raise InvalidInputError("'query' cannot be an empty list for vector search.")
+            if not all(isinstance(x, (int, float)) for x in query):
+                raise InvalidInputError(
+                    "When 'query' is a list (vector search), all elements must be numbers."
+                )
 
         query_type = "vector" if isinstance(query, list) else "text"
         logger.info(
@@ -167,11 +179,11 @@ class AsyncSearch(AsyncBaseResource):
             "top_k": top_k,
             "kiosk_mode": kiosk_mode,
         }
-
-        if threshold is None:
-            threshold = 0.25
+        # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
         if kiosk_mode:
-            payload["threshold"] = threshold
+            payload["threshold"] = threshold if threshold is not None else 0.25
+
+        logger.debug(f"Search payload: {payload}")
 
         response_data = await self._client._request(
             method="POST",

@@ -95,11 +95,9 @@ class Answer(BaseResource):
             "footerPrompt": footer_prompt if footer_prompt is not None else "",
             "kiosk_mode": kiosk_mode,
         }
-
-        if threshold is None:
-            threshold = 0.25
+        # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
         if kiosk_mode:
-            payload["threshold"] = threshold
+            payload["threshold"] = threshold if threshold is not None else 0.25
         logger.debug(f"Generative answer payload: {payload}")
 
         response_data = self._client._request(
@@ -211,11 +209,9 @@ class AsyncAnswer(AsyncBaseResource):
             "footerPrompt": footer_prompt if footer_prompt is not None else "",
             "kiosk_mode": kiosk_mode,
         }
-
-        if threshold is None:
-            threshold = 0.25
+        # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
         if kiosk_mode:
-            payload["threshold"] = threshold
+            payload["threshold"] = threshold if threshold is not None else 0.25
         logger.debug(f"Generative answer payload: {payload}")
 
         response_data = await self._client._request(
