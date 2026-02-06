@@ -28,3 +28,16 @@ class FileUploadResponse(TypedDict):
     namespace: str
     fileName: str
     fileSize: int
+
+
+class FileDeleteResult(TypedDict):
+    fileName: str
+    status: str
+    message: str
+
+
+class FileDeleteResponse(TypedDict):
+    success: bool
+    message: str
+    namespace: str
+    results: list[FileDeleteResult]

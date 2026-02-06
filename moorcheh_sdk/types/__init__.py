@@ -10,6 +10,8 @@ from .document import (
     DocumentDeleteResponse,
     DocumentGetResponse,
     DocumentUploadResponse,
+    FileDeleteResponse,
+    FileDeleteResult,
     FileUploadResponse,
 )
 from .namespace import Namespace, NamespaceCreateResponse, NamespaceListResponse
@@ -38,6 +40,8 @@ __all__ = [
     "DocumentUploadResponse",
     "DocumentDeleteResponse",
     "DocumentGetResponse",
+    "FileDeleteResponse",
+    "FileDeleteResult",
     "FileUploadResponse",
     "Vector",
     "VectorUploadResponse",
