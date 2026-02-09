@@ -400,7 +400,7 @@ class Documents(BaseResource):
                 raise APIError(
                     message="Upload URL response missing 'uploadUrl' or 'contentType'."
                 )
-            
+
             # Upload raw bytes to the presigned S3 URL.
             response = self._client.request(
                 method="PUT",
@@ -418,13 +418,16 @@ class Documents(BaseResource):
                     f"File '{file_name}' uploaded successfully to namespace"
                     f" '{namespace_name}' via presigned URL"
                 )
-                return cast(FileUploadResponse, {
-                    "success": True,
-                    "message": "File uploaded successfully",
-                    "namespace": namespace_name,
-                    "fileName": file_name,
-                    "fileSize": file_size or 0,
-                })
+                return cast(
+                    FileUploadResponse,
+                    {
+                        "success": True,
+                        "message": "File uploaded successfully",
+                        "namespace": namespace_name,
+                        "fileName": file_name,
+                        "fileSize": file_size or 0,
+                    },
+                )
             else:
                 # Handle error responses
                 logger.warning(
@@ -526,10 +529,10 @@ class Documents(BaseResource):
             >>> print(response["message"])
             File deletion process completed.
         """
-        if not all(isinstance(file_name, str) and file_name for file_name in file_names):
-            raise InvalidInputError(
-                "file_names must be a list of non-empty strings."
-            )
+        if not all(
+            isinstance(file_name, str) and file_name for file_name in file_names
+        ):
+            raise InvalidInputError("file_names must be a list of non-empty strings.")
 
         logger.info(
             f"Attempting to delete {len(file_names)} file(s) from namespace"
@@ -552,9 +555,7 @@ class Documents(BaseResource):
                 message="Unexpected response format from delete file endpoint."
             )
 
-        logger.info(
-            f"File deletion completed for namespace '{namespace_name}'."
-        )
+        logger.info(f"File deletion completed for namespace '{namespace_name}'.")
         return cast(FileDeleteResponse, response_data)
 
 
@@ -947,13 +948,16 @@ class AsyncDocuments(AsyncBaseResource):
                     f"File '{file_name}' uploaded successfully to namespace"
                     f" '{namespace_name}' via presigned URL"
                 )
-                return cast(FileUploadResponse, {
-                    "success": True,
-                    "message": "File uploaded successfully",
-                    "namespace": namespace_name,
-                    "fileName": file_name,
-                    "fileSize": file_size or 0,
-                })
+                return cast(
+                    FileUploadResponse,
+                    {
+                        "success": True,
+                        "message": "File uploaded successfully",
+                        "namespace": namespace_name,
+                        "fileName": file_name,
+                        "fileSize": file_size or 0,
+                    },
+                )
             else:
                 # Handle error responses
                 logger.warning(
@@ -1055,10 +1059,10 @@ class AsyncDocuments(AsyncBaseResource):
             >>> print(response["message"])
             File deletion process completed.
         """
-        if not all(isinstance(file_name, str) and file_name for file_name in file_names):
-            raise InvalidInputError(
-                "file_names must be a list of non-empty strings."
-            )
+        if not all(
+            isinstance(file_name, str) and file_name for file_name in file_names
+        ):
+            raise InvalidInputError("file_names must be a list of non-empty strings.")
 
         logger.info(
             f"Attempting to delete {len(file_names)} file(s) from namespace"
@@ -1081,7 +1085,5 @@ class AsyncDocuments(AsyncBaseResource):
                 message="Unexpected response format from delete file endpoint."
             )
 
-        logger.info(
-            f"File deletion completed for namespace '{namespace_name}'."
-        )
+        logger.info(f"File deletion completed for namespace '{namespace_name}'.")
         return cast(FileDeleteResponse, response_data)

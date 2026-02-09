@@ -203,7 +203,6 @@ async def test_upload_file_success(client, tmp_path):
         assert second_call.kwargs["path"] == upload_url_data["uploadUrl"]
 
 
-
 @pytest.mark.asyncio
 async def test_upload_file_with_path_object(client, tmp_path):
     """Test async file upload using Path object."""
@@ -518,7 +517,8 @@ async def test_delete_files_partial_success_207(client):
 
 
 @pytest.mark.parametrize(
-    "invalid_file_names", [None, [], ["id1", ""], ["id1", None], [123, {}], "not a list"]
+    "invalid_file_names",
+    [None, [], ["id1", ""], ["id1", None], [123, {}], "not a list"],
 )
 @pytest.mark.asyncio
 async def test_delete_files_invalid_input_client_side(client, invalid_file_names):

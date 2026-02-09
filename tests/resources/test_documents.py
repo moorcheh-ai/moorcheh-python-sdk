@@ -537,7 +537,8 @@ def test_delete_files_partial_success_207(client, mocker, mock_response):
 
 
 @pytest.mark.parametrize(
-    "invalid_file_names", [None, [], ["id1", ""], ["id1", None], [123, {}], "not a list"]
+    "invalid_file_names",
+    [None, [], ["id1", ""], ["id1", None], [123, {}], "not a list"],
 )
 def test_delete_files_invalid_input_client_side(client, invalid_file_names):
     """Test client-side validation for delete_files."""

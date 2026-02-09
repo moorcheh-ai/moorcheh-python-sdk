@@ -53,7 +53,7 @@ def main():
     logger.info(f"Files to delete: {file_names_to_delete}")
 
     # 3. Delete the file(s)
-        #    Note: The method expects a LIST of file names, even if deleting only one.
+    #    Note: The method expects a LIST of file names, even if deleting only one.
     try:
         with client:
             logger.info(
