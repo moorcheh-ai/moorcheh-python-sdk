@@ -394,6 +394,11 @@ class Documents(BaseResource):
                 expected_status=200,
             )
 
+            if not isinstance(response_data, dict):
+                raise APIError(
+                    message="Upload URL response was not a dictionary."
+                )
+
             upload_url = response_data.get("uploadUrl")
             content_type = response_data.get("contentType")
             if not upload_url or not content_type:
@@ -921,6 +926,11 @@ class AsyncDocuments(AsyncBaseResource):
                 json_data={"fileName": file_name},
                 expected_status=200,
             )
+
+            if not isinstance(response_data, dict):
+                raise APIError(
+                    message="Upload URL response was not a dictionary."
+                )
 
             upload_url = response_data.get("uploadUrl")
             content_type = response_data.get("contentType")
