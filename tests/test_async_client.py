@@ -473,7 +473,7 @@ async def test_delete_files_success(client):
         assert response == expected_response
         mock_request.assert_called_once()
         args, kwargs = mock_request.call_args
-        assert kwargs["method"] == "POST"
+        assert kwargs["method"] == "DELETE"
         assert kwargs["path"] == "/namespaces/test/delete-file"
         assert kwargs["json"] == {"fileNames": file_names}
 
@@ -512,7 +512,7 @@ async def test_delete_files_partial_success_207(client):
         assert response == expected_response
         mock_request.assert_called_once()
         args, kwargs = mock_request.call_args
-        assert kwargs["method"] == "POST"
+        assert kwargs["method"] == "DELETE"
         assert kwargs["path"] == "/namespaces/test/delete-file"
         assert kwargs["json"] == {"fileNames": file_names}
 

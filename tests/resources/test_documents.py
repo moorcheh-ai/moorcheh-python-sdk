@@ -492,7 +492,7 @@ def test_delete_files_success_200(client, mocker, mock_response):
     )
 
     client._mock_httpx_instance.request.assert_called_once_with(
-        method="POST",
+        method="DELETE",
         url=f"/namespaces/{TEST_NAMESPACE}/delete-file",
         json={"fileNames": file_names},
         params=None,
@@ -528,7 +528,7 @@ def test_delete_files_partial_success_207(client, mocker, mock_response):
     )
 
     client._mock_httpx_instance.request.assert_called_once_with(
-        method="POST",
+        method="DELETE",
         url=f"/namespaces/{TEST_NAMESPACE}/delete-file",
         json={"fileNames": file_names},
         params=None,

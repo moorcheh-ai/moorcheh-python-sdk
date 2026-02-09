@@ -539,7 +539,7 @@ class Documents(BaseResource):
         endpoint = f"/namespaces/{namespace_name}/delete-file"
 
         response_data = self._client._request(
-            method="POST",
+            method="DELETE",
             endpoint=endpoint,
             json_data={"fileNames": file_names},
             expected_status=200,
@@ -1068,7 +1068,7 @@ class AsyncDocuments(AsyncBaseResource):
         endpoint = f"/namespaces/{namespace_name}/delete-file"
 
         response_data = await self._client._request(
-            method="POST",
+            method="DELETE",
             endpoint=endpoint,
             json_data={"fileNames": file_names},
             expected_status=200,
