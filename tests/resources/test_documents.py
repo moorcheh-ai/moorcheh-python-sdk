@@ -462,3 +462,101 @@ def test_upload_file_invalid_input_error(client, mocker, mock_response, tmp_path
         client._mock_httpx_instance.request.call_args.kwargs["url"]
         == f"/namespaces/{TEST_NAMESPACE}/upload-url"
     )
+
+
+def test_delete_files_success_200(client, mocker, mock_response):
+    """Test successful deletion of files."""
+    file_names = ["document.pdf", "report.docx"]
+    expected_response = {
+        "success": True,
+        "message": "File deletion process completed.",
+        "namespace": TEST_NAMESPACE,
+        "results": [
+            {
+                "fileName": file_names[0],
+                "status": "deleted",
+                "message": "File deletion initiated successfully",
+            },
+            {
+                "fileName": file_names[1],
+                "status": "deleted",
+                "message": "File deletion initiated successfully",
+            },
+        ],
+    }
+    mock_resp = mock_response(200, json_data=expected_response)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    result = client.documents.delete_files(
+        namespace_name=TEST_NAMESPACE, file_names=file_names
+    )
+
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="POST",
+        url=f"/namespaces/{TEST_NAMESPACE}/delete-file",
+        json={"fileNames": file_names},
+        params=None,
+    )
+    assert result == expected_response
+
+
+def test_delete_files_partial_success_207(client, mocker, mock_response):
+    """Test partial deletion of files (207 Multi-Status)."""
+    file_names = ["document.pdf", "missing.pdf"]
+    expected_response = {
+        "success": True,
+        "message": "File deletion process completed.",
+        "namespace": TEST_NAMESPACE,
+        "results": [
+            {
+                "fileName": file_names[0],
+                "status": "deleted",
+                "message": "File deletion initiated successfully",
+            },
+            {
+                "fileName": file_names[1],
+                "status": "not_found",
+                "message": "File not found",
+            },
+        ],
+    }
+    mock_resp = mock_response(207, json_data=expected_response)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    result = client.documents.delete_files(
+        namespace_name=TEST_NAMESPACE, file_names=file_names
+    )
+
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="POST",
+        url=f"/namespaces/{TEST_NAMESPACE}/delete-file",
+        json={"fileNames": file_names},
+        params=None,
+    )
+    assert result == expected_response
+
+
+@pytest.mark.parametrize(
+    "invalid_file_names", [None, [], ["id1", ""], ["id1", None], [123, {}], "not a list"]
+)
+def test_delete_files_invalid_input_client_side(client, invalid_file_names):
+    """Test client-side validation for delete_files."""
+    with pytest.raises(InvalidInputError):
+        client.documents.delete_files(
+            namespace_name=TEST_NAMESPACE, file_names=invalid_file_names
+        )
+    client._mock_httpx_instance.request.assert_not_called()
+
+
+def test_delete_files_namespace_not_found(client, mocker, mock_response):
+    """Test deleting files from a non-existent namespace."""
+    file_names = ["document.pdf"]
+    error_text = f"Namespace '{TEST_NAMESPACE}' not found."
+    mock_resp = mock_response(404, text_data=error_text)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    with pytest.raises(NamespaceNotFound, match=error_text):
+        client.documents.delete_files(
+            namespace_name=TEST_NAMESPACE, file_names=file_names
+        )
+    client._mock_httpx_instance.request.assert_called_once()

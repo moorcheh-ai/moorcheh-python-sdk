@@ -437,3 +437,116 @@ async def test_upload_file_api_error(client, tmp_path):
                 namespace_name="test", file_path=str(test_file)
             )
         assert mock_request.call_args.kwargs["path"] == "/namespaces/test/upload-url"
+
+
+@pytest.mark.asyncio
+async def test_delete_files_success(client):
+    """Test successful async deletion of files."""
+    file_names = ["document.pdf", "report.docx"]
+    expected_response = {
+        "success": True,
+        "message": "File deletion process completed.",
+        "namespace": "test",
+        "results": [
+            {
+                "fileName": file_names[0],
+                "status": "deleted",
+                "message": "File deletion initiated successfully",
+            },
+            {
+                "fileName": file_names[1],
+                "status": "deleted",
+                "message": "File deletion initiated successfully",
+            },
+        ],
+    }
+
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = MagicMock(
+            status_code=200, json=lambda: expected_response
+        )
+
+        response = await client.documents.delete_files(
+            namespace_name="test", file_names=file_names
+        )
+
+        assert response == expected_response
+        mock_request.assert_called_once()
+        args, kwargs = mock_request.call_args
+        assert kwargs["method"] == "POST"
+        assert kwargs["path"] == "/namespaces/test/delete-file"
+        assert kwargs["json"] == {"fileNames": file_names}
+
+
+@pytest.mark.asyncio
+async def test_delete_files_partial_success_207(client):
+    """Test partial async deletion of files (207 Multi-Status)."""
+    file_names = ["document.pdf", "missing.pdf"]
+    expected_response = {
+        "success": True,
+        "message": "File deletion process completed.",
+        "namespace": "test",
+        "results": [
+            {
+                "fileName": file_names[0],
+                "status": "deleted",
+                "message": "File deletion initiated successfully",
+            },
+            {
+                "fileName": file_names[1],
+                "status": "not_found",
+                "message": "File not found",
+            },
+        ],
+    }
+
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = MagicMock(
+            status_code=207, json=lambda: expected_response
+        )
+
+        response = await client.documents.delete_files(
+            namespace_name="test", file_names=file_names
+        )
+
+        assert response == expected_response
+        mock_request.assert_called_once()
+        args, kwargs = mock_request.call_args
+        assert kwargs["method"] == "POST"
+        assert kwargs["path"] == "/namespaces/test/delete-file"
+        assert kwargs["json"] == {"fileNames": file_names}
+
+
+@pytest.mark.parametrize(
+    "invalid_file_names", [None, [], ["id1", ""], ["id1", None], [123, {}], "not a list"]
+)
+@pytest.mark.asyncio
+async def test_delete_files_invalid_input_client_side(client, invalid_file_names):
+    """Test client-side validation for async delete_files."""
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        with pytest.raises(InvalidInputError):
+            await client.documents.delete_files(
+                namespace_name="test", file_names=invalid_file_names
+            )
+        mock_request.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_files_namespace_not_found(client):
+    """Test async delete_files against a non-existent namespace."""
+    file_names = ["document.pdf"]
+    error_text = "Namespace 'test' not found."
+
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_response_obj = MagicMock()
+        mock_response_obj.status_code = 404
+        mock_response_obj.text = error_text
+        mock_response_obj.json.side_effect = Exception("Cannot decode JSON")
+        mock_request.return_value = mock_response_obj
+
+        with pytest.raises(NamespaceNotFound, match=error_text):
+            await client.documents.delete_files(
+                namespace_name="test", file_names=file_names
+            )
+        mock_request.assert_called_once()
+        assert mock_request.call_args.kwargs["path"] == "/namespaces/test/delete-file"
