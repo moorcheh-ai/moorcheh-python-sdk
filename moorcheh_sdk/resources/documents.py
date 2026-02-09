@@ -1,3 +1,4 @@
+import asyncio
 import os
 from pathlib import Path
 from typing import BinaryIO, cast
@@ -15,6 +16,7 @@ from ..types import (
     DocumentDeleteResponse,
     DocumentGetResponse,
     DocumentUploadResponse,
+    FileDeleteResponse,
     FileUploadResponse,
 )
 from ..utils.batching import chunk_iterable
@@ -263,13 +265,14 @@ class Documents(BaseResource):
         Uploads a file directly to a text-based namespace.
 
         The file is automatically processed to extract text content and generate
-        embeddings. Files are queued for processing.
+        embeddings. Files are queued for processing and uploaded via a
+        pre-signed S3 URL.
 
         Args:
             namespace_name: The name of the target text-based namespace.
             file_path: Path to the file (str or Path) or a file-like object (BinaryIO).
                 Must be one of: .pdf, .docx, .xlsx, .json, .txt, .csv, .md
-                Maximum file size: 10MB
+                Maximum file size: 5GB
 
         Returns:
             A dictionary confirming the file upload.
@@ -301,7 +304,7 @@ class Documents(BaseResource):
         """
         # Allowed file extensions
         ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
-        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
+        MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024  # 5GB in bytes
 
         # Handle file path or file-like object
         file_obj: BinaryIO
@@ -328,9 +331,9 @@ class Documents(BaseResource):
 
             # Validate file size
             if file_size > MAX_FILE_SIZE:
-                size_mb = file_size / (1024 * 1024)
+                size_gb = file_size / (1024 * 1024 * 1024)
                 raise InvalidInputError(
-                    f"File size ({size_mb:.2f}MB) exceeds maximum allowed size of 10MB"
+                    f"File size ({size_gb:.2f}GB) exceeds maximum allowed size of 5GB"
                 )
 
             file_obj = open(path, "rb")
@@ -355,7 +358,7 @@ class Documents(BaseResource):
                     file_obj.seek(current_pos)
                 except (AttributeError, OSError):
                     # Can't determine size, will let API validate
-                    file_size = 0
+                    file_size = None
 
             # Validate file extension from filename
             file_ext = Path(file_name).suffix.lower()
@@ -367,10 +370,10 @@ class Documents(BaseResource):
                 )
 
             # Validate file size if we could determine it
-            if file_size > MAX_FILE_SIZE:
-                size_mb = file_size / (1024 * 1024)
+            if file_size is not None and file_size > MAX_FILE_SIZE:
+                size_gb = file_size / (1024 * 1024 * 1024)
                 raise InvalidInputError(
-                    f"File size ({size_mb:.2f}MB) exceeds maximum allowed size of 10MB"
+                    f"File size ({size_gb:.2f}GB) exceeds maximum allowed size of 5GB"
                 )
 
             should_close = False
@@ -380,39 +383,56 @@ class Documents(BaseResource):
             f" '{namespace_name}'..."
         )
 
-        endpoint = f"/namespaces/{namespace_name}/upload-file"
+        endpoint = f"/namespaces/{namespace_name}/upload-url"
 
         try:
-            # Prepare multipart/form-data
-            # httpx will automatically set Content-Type: multipart/form-data when files are provided
-            files = {"file": (file_name, file_obj, None)}
-
-            # Use the SDK's request method - it will handle retries and httpx will set multipart/form-data
-            response = self._client.request(
+            # Request a presigned URL for the upload.
+            response_data = self._client._request(
                 method="POST",
-                path=endpoint,
-                files=files,
+                endpoint=endpoint,
+                json_data={"fileName": file_name},
+                expected_status=200,
+            )
+
+            if not isinstance(response_data, dict):
+                raise APIError(
+                    message="Upload URL response was not a dictionary."
+                )
+
+            upload_url = response_data.get("uploadUrl")
+            content_type = response_data.get("contentType")
+            if not upload_url or not content_type:
+                raise APIError(
+                    message="Upload URL response missing 'uploadUrl' or 'contentType'."
+                )
+
+            # Upload raw bytes to the presigned S3 URL.
+            response = self._client.request(
+                method="PUT",
+                path=upload_url,
+                content=file_obj,
+                headers={"Content-Type": content_type},
+                timeout=self._client.timeout,
             )
 
             logger.debug(f"Received response with status code: {response.status_code}")
 
             # Process response
             if response.status_code == 200:
-                try:
-                    response_data = response.json()
-                    logger.info(
-                        f"File '{file_name}' uploaded successfully to namespace"
-                        f" '{namespace_name}'"
-                    )
-                    return cast(FileUploadResponse, response_data)
-                except Exception as json_e:
-                    logger.error(
-                        f"Error decoding JSON response: {json_e}", exc_info=True
-                    )
-                    raise APIError(
-                        status_code=response.status_code,
-                        message=f"Failed to decode JSON response: {response.text}",
-                    ) from json_e
+                logger.info(
+                    f"File '{file_name}' uploaded successfully to namespace"
+                    f" '{namespace_name}' via presigned URL"
+                )
+                return cast(
+                    FileUploadResponse,
+                    {
+                        "success": True,
+                        "message": "File uploaded successfully",
+                        "namespace": namespace_name,
+                        "fileName": file_name,
+                        "fileSize": file_size or 0,
+                    },
+                )
             else:
                 # Handle error responses
                 logger.warning(
@@ -464,6 +484,84 @@ class Documents(BaseResource):
         finally:
             if should_close and hasattr(file_obj, "close"):
                 file_obj.close()
+
+    @required_args(
+        ["namespace_name", "file_names"],
+        types={"namespace_name": str, "file_names": list},
+    )
+    def delete_files(
+        self, namespace_name: str, file_names: list[str]
+    ) -> FileDeleteResponse:
+        """
+        Deletes one or more files from a text-based namespace.
+
+        This removes the file and its derived embeddings from the namespace.
+
+        Args:
+            namespace_name: The name of the target text-based namespace.
+            file_names: A list of file names to delete.
+
+        Returns:
+            A dictionary confirming the deletion status.
+
+            Structure:
+            {
+                "success": bool,
+                "message": str,
+                "namespace": str,
+                "results": [
+                    {
+                        "fileName": str,
+                        "status": str,
+                        "message": str
+                    }
+                ]
+            }
+
+        Raises:
+            InvalidInputError: If input validation fails or API returns 400.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+
+        Example:
+            >>> client = MoorchehClient()
+            >>> response = client.documents.delete_files(
+            ...     namespace_name="my-docs",
+            ...     file_names=["document.pdf", "report.docx"]
+            ... )
+            >>> print(response["message"])
+            File deletion process completed.
+        """
+        if not all(
+            isinstance(file_name, str) and file_name for file_name in file_names
+        ):
+            raise InvalidInputError("file_names must be a list of non-empty strings.")
+
+        logger.info(
+            f"Attempting to delete {len(file_names)} file(s) from namespace"
+            f" '{namespace_name}'..."
+        )
+
+        endpoint = f"/namespaces/{namespace_name}/delete-file"
+
+        response_data = self._client._request(
+            method="DELETE",
+            endpoint=endpoint,
+            json_data={"fileNames": file_names},
+            expected_status=200,
+            alt_success_status=207,
+        )
+
+        if not isinstance(response_data, dict):
+            logger.error("Delete file response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from delete file endpoint."
+            )
+
+        logger.info(f"File deletion completed for namespace '{namespace_name}'.")
+        return cast(FileDeleteResponse, response_data)
 
 
 class AsyncDocuments(AsyncBaseResource):
@@ -700,13 +798,14 @@ class AsyncDocuments(AsyncBaseResource):
         Uploads a file directly to a text-based namespace asynchronously.
 
         The file is automatically processed to extract text content and generate
-        embeddings. Files are queued for processing.
+        embeddings. Files are queued for processing and uploaded via a
+        pre-signed S3 URL.
 
         Args:
             namespace_name: The name of the target text-based namespace.
             file_path: Path to the file (str or Path) or a file-like object (BinaryIO).
                 Must be one of: .pdf, .docx, .xlsx, .json, .txt, .csv, .md
-                Maximum file size: 10MB
+                Maximum file size: 5GB
 
         Returns:
             A dictionary confirming the file upload.
@@ -738,7 +837,7 @@ class AsyncDocuments(AsyncBaseResource):
         """
         # Allowed file extensions
         ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
-        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
+        MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024  # 5GB in bytes
 
         # Handle file path or file-like object
         file_obj: BinaryIO
@@ -765,9 +864,9 @@ class AsyncDocuments(AsyncBaseResource):
 
             # Validate file size
             if file_size > MAX_FILE_SIZE:
-                size_mb = file_size / (1024 * 1024)
+                size_gb = file_size / (1024 * 1024 * 1024)
                 raise InvalidInputError(
-                    f"File size ({size_mb:.2f}MB) exceeds maximum allowed size of 10MB"
+                    f"File size ({size_gb:.2f}GB) exceeds maximum allowed size of 5GB"
                 )
 
             file_obj = open(path, "rb")
@@ -805,9 +904,9 @@ class AsyncDocuments(AsyncBaseResource):
 
             # Validate file size if we could determine it
             if file_size > MAX_FILE_SIZE:
-                size_mb = file_size / (1024 * 1024)
+                size_gb = file_size / (1024 * 1024 * 1024)
                 raise InvalidInputError(
-                    f"File size ({size_mb:.2f}MB) exceeds maximum allowed size of 10MB"
+                    f"File size ({size_gb:.2f}GB) exceeds maximum allowed size of 5GB"
                 )
 
             should_close = False
@@ -817,39 +916,58 @@ class AsyncDocuments(AsyncBaseResource):
             f" '{namespace_name}'..."
         )
 
-        endpoint = f"/namespaces/{namespace_name}/upload-file"
+        endpoint = f"/namespaces/{namespace_name}/upload-url"
 
         try:
-            # Prepare multipart/form-data
-            # httpx will automatically set Content-Type: multipart/form-data when files are provided
-            files = {"file": (file_name, file_obj, None)}
-
-            # Use the SDK's request method - it will handle retries and httpx will set multipart/form-data
-            response = await self._client.request(
+            # Request a presigned URL for the upload.
+            response_data = await self._client._request(
                 method="POST",
-                path=endpoint,
-                files=files,
+                endpoint=endpoint,
+                json_data={"fileName": file_name},
+                expected_status=200,
+            )
+
+            if not isinstance(response_data, dict):
+                raise APIError(
+                    message="Upload URL response was not a dictionary."
+                )
+
+            upload_url = response_data.get("uploadUrl")
+            content_type = response_data.get("contentType")
+            if not upload_url or not content_type:
+                raise APIError(
+                    message="Upload URL response missing 'uploadUrl' or 'contentType'."
+                )
+
+            # Read the file without blocking the async loop.
+            file_bytes = await asyncio.to_thread(file_obj.read)
+            # Upload raw bytes to the presigned S3 URL.
+            response = await self._client.request(
+                method="PUT",
+                path=upload_url,
+                content=file_bytes,
+                headers={"Content-Type": content_type},
+                timeout=self._client.timeout,
             )
 
             logger.debug(f"Received response with status code: {response.status_code}")
 
             # Process response
             if response.status_code == 200:
-                try:
-                    response_data = response.json()
-                    logger.info(
-                        f"File '{file_name}' uploaded successfully to namespace"
-                        f" '{namespace_name}'"
-                    )
-                    return cast(FileUploadResponse, response_data)
-                except Exception as json_e:
-                    logger.error(
-                        f"Error decoding JSON response: {json_e}", exc_info=True
-                    )
-                    raise APIError(
-                        status_code=response.status_code,
-                        message=f"Failed to decode JSON response: {response.text}",
-                    ) from json_e
+                logger.info(
+                    f"File '{file_name}' uploaded successfully to namespace"
+                    f" '{namespace_name}' via presigned URL"
+                )
+                return cast(
+                    FileUploadResponse,
+                    {
+                        "success": True,
+                        "message": "File uploaded successfully",
+                        "namespace": namespace_name,
+                        "fileName": file_name,
+                        "fileSize": file_size or 0,
+                    },
+                )
             else:
                 # Handle error responses
                 logger.warning(
@@ -901,3 +1019,81 @@ class AsyncDocuments(AsyncBaseResource):
         finally:
             if should_close and hasattr(file_obj, "close"):
                 file_obj.close()
+
+    @required_args(
+        ["namespace_name", "file_names"],
+        types={"namespace_name": str, "file_names": list},
+    )
+    async def delete_files(
+        self, namespace_name: str, file_names: list[str]
+    ) -> FileDeleteResponse:
+        """
+        Deletes one or more files from a text-based namespace asynchronously.
+
+        This removes the file and its derived embeddings from the namespace.
+
+        Args:
+            namespace_name: The name of the target text-based namespace.
+            file_names: A list of file names to delete.
+
+        Returns:
+            A dictionary confirming the deletion.
+
+            Structure:
+            {
+                "success": bool,
+                "message": str,
+                "namespace": str,
+                "results": [
+                    {
+                        "fileName": str,
+                        "status": str,
+                        "message": str
+                    }
+                ]
+            }
+
+        Raises:
+            InvalidInputError: If input validation fails or API returns 400.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+
+        Example:
+            >>> client = AsyncMoorchehClient()
+            >>> response = await client.documents.delete_files(
+            ...     namespace_name="my-docs",
+            ...     file_names=["document.pdf", "report.docx"]
+            ... )
+            >>> print(response["message"])
+            File deletion process completed.
+        """
+        if not all(
+            isinstance(file_name, str) and file_name for file_name in file_names
+        ):
+            raise InvalidInputError("file_names must be a list of non-empty strings.")
+
+        logger.info(
+            f"Attempting to delete {len(file_names)} file(s) from namespace"
+            f" '{namespace_name}'..."
+        )
+
+        endpoint = f"/namespaces/{namespace_name}/delete-file"
+
+        response_data = await self._client._request(
+            method="DELETE",
+            endpoint=endpoint,
+            json_data={"fileNames": file_names},
+            expected_status=200,
+            alt_success_status=207,
+        )
+
+        if not isinstance(response_data, dict):
+            logger.error("Delete file response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from delete file endpoint."
+            )
+
+        logger.info(f"File deletion completed for namespace '{namespace_name}'.")
+        return cast(FileDeleteResponse, response_data)
