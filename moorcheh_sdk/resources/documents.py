@@ -16,6 +16,7 @@ from ..types import (
     DocumentDeleteResponse,
     DocumentGetResponse,
     DocumentUploadResponse,
+    FileDeleteResponse,
     FileUploadResponse,
 )
 from ..utils.batching import chunk_iterable
@@ -476,6 +477,86 @@ class Documents(BaseResource):
             if should_close and hasattr(file_obj, "close"):
                 file_obj.close()
 
+    @required_args(
+        ["namespace_name", "file_names"],
+        types={"namespace_name": str, "file_names": list},
+    )
+    def delete_files(
+        self, namespace_name: str, file_names: list[str]
+    ) -> FileDeleteResponse:
+        """
+        Deletes one or more files from a text-based namespace.
+
+        This removes the file and its derived embeddings from the namespace.
+
+        Args:
+            namespace_name: The name of the target text-based namespace.
+            file_names: A list of file names to delete.
+
+        Returns:
+            A dictionary confirming the deletion status.
+
+            Structure:
+            {
+                "success": bool,
+                "message": str,
+                "namespace": str,
+                "results": [
+                    {
+                        "fileName": str,
+                        "status": str,
+                        "message": str
+                    }
+                ]
+            }
+
+        Raises:
+            InvalidInputError: If input validation fails or API returns 400.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+
+        Example:
+            >>> client = MoorchehClient()
+            >>> response = client.documents.delete_files(
+            ...     namespace_name="my-docs",
+            ...     file_names=["document.pdf", "report.docx"]
+            ... )
+            >>> print(response["message"])
+            File deletion process completed.
+        """
+        if not all(isinstance(file_name, str) and file_name for file_name in file_names):
+            raise InvalidInputError(
+                "file_names must be a list of non-empty strings."
+            )
+
+        logger.info(
+            f"Attempting to delete {len(file_names)} file(s) from namespace"
+            f" '{namespace_name}'..."
+        )
+
+        endpoint = f"/namespaces/{namespace_name}/delete-file"
+
+        response_data = self._client._request(
+            method="POST",
+            endpoint=endpoint,
+            json_data={"fileNames": file_names},
+            expected_status=200,
+            alt_success_status=207,
+        )
+
+        if not isinstance(response_data, dict):
+            logger.error("Delete file response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from delete file endpoint."
+            )
+
+        logger.info(
+            f"File deletion completed for namespace '{namespace_name}'."
+        )
+        return cast(FileDeleteResponse, response_data)
+
 
 class AsyncDocuments(AsyncBaseResource):
     @required_args(
@@ -924,3 +1005,83 @@ class AsyncDocuments(AsyncBaseResource):
         finally:
             if should_close and hasattr(file_obj, "close"):
                 file_obj.close()
+
+    @required_args(
+        ["namespace_name", "file_names"],
+        types={"namespace_name": str, "file_names": list},
+    )
+    async def delete_files(
+        self, namespace_name: str, file_names: list[str]
+    ) -> FileDeleteResponse:
+        """
+        Deletes one or more files from a text-based namespace asynchronously.
+
+        This removes the file and its derived embeddings from the namespace.
+
+        Args:
+            namespace_name: The name of the target text-based namespace.
+            file_names: A list of file names to delete.
+
+        Returns:
+            A dictionary confirming the deletion.
+
+            Structure:
+            {
+                "success": bool,
+                "message": str,
+                "namespace": str,
+                "results": [
+                    {
+                        "fileName": str,
+                        "status": str,
+                        "message": str
+                    }
+                ]
+            }
+
+        Raises:
+            InvalidInputError: If input validation fails or API returns 400.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+
+        Example:
+            >>> client = AsyncMoorchehClient()
+            >>> response = await client.documents.delete_files(
+            ...     namespace_name="my-docs",
+            ...     file_names=["document.pdf", "report.docx"]
+            ... )
+            >>> print(response["message"])
+            File deletion process completed.
+        """
+        if not all(isinstance(file_name, str) and file_name for file_name in file_names):
+            raise InvalidInputError(
+                "file_names must be a list of non-empty strings."
+            )
+
+        logger.info(
+            f"Attempting to delete {len(file_names)} file(s) from namespace"
+            f" '{namespace_name}'..."
+        )
+
+        endpoint = f"/namespaces/{namespace_name}/delete-file"
+
+        response_data = await self._client._request(
+            method="POST",
+            endpoint=endpoint,
+            json_data={"fileNames": file_names},
+            expected_status=200,
+            alt_success_status=207,
+        )
+
+        if not isinstance(response_data, dict):
+            logger.error("Delete file response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from delete file endpoint."
+            )
+
+        logger.info(
+            f"File deletion completed for namespace '{namespace_name}'."
+        )
+        return cast(FileDeleteResponse, response_data)
