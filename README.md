@@ -21,9 +21,7 @@
 </p>
 
 <p align="center">
-    <a href="https://lnkd.in/gE_Pz_kb">
-        <img src="https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white" alt="Moorcheh Discord">
-    </a>
+    <a href="https://lnkd.in/gE_Pz_kb"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white" alt="Moorcheh Discord"></a>
     <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
     <a href="https://pypi.org/project/moorcheh-sdk/"><img alt="Python Version" src="https://img.shields.io/pypi/v/moorcheh-sdk.svg?color=%2334D058"></a>
     <a href="https://pepy.tech/project/moorcheh-sdk"><img alt="Downloads" src="https://static.pepy.tech/personalized-badge/moorcheh-sdk?period=total&units=international_system&left_color=grey&right_color=blue&left_text=Downloads"></a>
