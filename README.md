@@ -147,30 +147,5 @@ Have questions or feedback? We're here to help:
 ## Contributing
 Contributions are welcome! Please refer to the contributing guidelines ([CONTRIBUTING.md](CONTRIBUTING.md)) for details on setting up the development environment, running tests, and submitting pull requests.
 
-## Development Setup
-If you want to contribute, run tests, or run the example scripts directly from the source code:
-
-Clone the repository:
-```bash
-git clone https://github.com/moorcheh-ai/moorcheh-python-sdk.git
-cd moorcheh-python-sdk
-```
-
-Install dependencies using uv (this includes development tools like pytest):
-```bash
-uv sync
-```
-
-Set your MOORCHEH_API_KEY environment variable.
-Run examples using uv run:
-```bash
-uv run python examples/quickstart.py
-```
-
-Run tests using uv run:
-```bash
-uv run pytest tests/
-```
-
 ## License
 This project is licensed under the MIT License - See the LICENSE file for details.
