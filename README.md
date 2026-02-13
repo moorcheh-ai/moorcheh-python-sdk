@@ -103,20 +103,20 @@ For more detailed examples covering vector operations, error handling, and loggi
 ## API Client Methods
 The `MoorchehClient` and `AsyncMoorchehClient` classes provide the same method signatures. Below is a list of the available methods.
 
-| Methods                   | Description                                             |
-| ------------------------- | ------------------------------------------------------- |
-| `namespaces.create`       | Create a text or vector namespace.                      |
-| `namespaces.list`         | List all available namespaces.                          |
-| `namespaces.delete`       | Delete a namespace by name.                             |
-| `documents.upload`        | Upload text documents (auto-embed) to a text namespace. |
-| `documents.get`           | Retrieve documents by ID.                               |
-| `documents.upload_file`   | Upload a file for server-side ingestion.                |
-| `documents.delete`        | Delete documents by ID.                                 |
-| `documents.delete_files`  | Delete uploaded files by filename.                      |
-| `vectors.upload`          | Upload vectors to a vector namespace.                   |
-| `vectors.delete`          | Delete vectors by ID.                                   |
-| `similarity_search.query` | Run semantic search with text or vector queries.        |
-| `answer.generate`         | Generate a grounded answer from a namespace.            |
+| Methods                   | Required Parameters                    | Description                                        |
+| ------------------------- | -------------------------------------- | -------------------------------------------------- |
+| `namespaces.create`       | namespace_name, type, vector_dimension | Create a text or vector namespace.                 |
+| `namespaces.list`         | N/A                                    | List all available namespaces.                     |
+| `namespaces.delete`       | namespace_name                         | Delete a namespace by name.                        |
+| `documents.upload`        | namespace_name, documents              | Upload text documents to a text namespace.         |
+| `documents.get`           | namespace_name, ids                    | Retrieve documents by ID.                          |
+| `documents.upload_file`   | namespace_name, file_path              | Upload a file for server-side ingestion.           |
+| `documents.delete`        | namespace_name, ids                    | Delete documents by ID.                            |
+| `documents.delete_files`  | namespace_name, file_names             | Delete uploaded files by filename.                 |
+| `vectors.upload`          | namespace_name, vectors=[{id, vector}] | Upload vectors to a vector namespace.              |
+| `vectors.delete`          | namespace_name, ids                    | Delete vectors by ID.                              |
+| `similarity_search.query` | namespaces, query                      | Run semantic search with text or vector queries.   |
+| `answer.generate`         | namespaces, query                      | Generate a grounded answer from a namespace.       |
 
 For fully detailed method functionality, please see the [API Reference](https://docs.moorcheh.ai/api-reference/introduction).
 
@@ -129,11 +129,11 @@ For fully detailed method functionality, please see the [API Reference](https://
 
 ## Roadmap (Planned)
 
-| Item              | Description                                                       |
-| ----------------- | ----------------------------------------------------------------- |
-| `get_eigenvectors`| Expose top eigenvectors for semantic structure analysis.          |
-| `get_graph`       | Provide a graph view of relationships across data in a namespace. |
-| `get_umap_image`  | Generate a 2D UMAP projection image for quick visual exploration. |
+| Item               | Required Parameters              | Description                                                       |
+| ------------------ | -------------------------------- | ----------------------------------------------------------------- |
+| `get_eigenvectors` | namespace_name, n_eigenvectors   | Expose top eigenvectors for semantic structure analysis.          |
+| `get_graph`        | namespace_name                   | Provide a graph view of relationships across data in a namespace. |
+| `get_umap_image`   | namespace_name, n_dimensions     | Generate a 2D UMAP projection image for quick visual exploration. |
 
 ## Documentation & Support
 Have questions or feedback? We're here to help:
