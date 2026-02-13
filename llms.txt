@@ -1,0 +1,719 @@
+# llms.txt
+
+Moorcheh Python SDK. Use this file as guidance for LLMs and tooling when reading or citing docs and code.
+
+## Sources and freshness
+- API behavior: https://docs.moorcheh.ai and https://docs.moorcheh.ai/api-reference/introduction
+- SDK behavior: this repo source (including retry/backoff and logging)
+- Pricing/limits: https://moorcheh.ai/plans
+- If any of these differ, prefer the canonical docs and plan page above.
+
+## Canonical docs
+- https://docs.moorcheh.ai/
+- https://docs.moorcheh.ai/quickstart
+- https://docs.moorcheh.ai/python-sdk/introduction
+- https://docs.moorcheh.ai/api-reference/introduction
+
+## Primary product/site links
+- https://moorcheh.ai/
+- https://console.moorcheh.ai/
+- https://www.youtube.com/@moorchehai/videos
+- https://x.com/moorcheh_ai
+
+## Repository scope
+- Repo: https://github.com/moorcheh-ai/moorcheh-python-sdk
+- SDK package: https://pypi.org/project/moorcheh-sdk/
+
+## API base and auth
+- Base URL: https://api.moorcheh.ai/v1
+- Auth header: x-api-key: YOUR_API_KEY
+- Content-Type: application/json
+- Error format: {"error": "...", "message": "..."}
+- Example error:
+	{
+		"error": "Error description",
+		"message": "Detailed error message"
+	}
+- Common status codes: 200, 201, 202, 207, 400, 401, 403, 404, 409, 413, 429, 500
+- Rate limits depend on subscription tier; contact support for details.
+- Plans page lists API Rate Limit: 100/hour (see https://moorcheh.ai/plans for tier context).
+
+## Pricing and usage units (from plans page)
+- Compute unit: $0.01 per unit.
+- Semantic search: 5 units per 1,000 queries.
+- Ingestion: 1 unit per 10MB (one-time).
+- Management: 5 units per 1,000 listing/updating calls.
+- Gen AI calls (Bedrock models): Standard 1 unit, Advanced 2 units, Premium 3 units.
+- Namespaces and vector storage: listed as $0.00/month on plans page.
+
+## Plan tiers (summary from plans page)
+- Builder: $0/month, shared tenancy, community support, 10k vectors.
+- Production: $29/month + usage, 99.9% uptime SLA, priority support, team roles.
+- Sovereign: custom pricing, native VPC deployment, dedicated instances, audit logs.
+- Verify current limits and features on https://moorcheh.ai/plans.
+
+## Quickstart (SDK)
+- Install: pip install moorcheh-sdk
+- Auth: set MOORCHEH_API_KEY environment variable
+- Client: use context manager (with MoorchehClient() as client)
+
+## Core concepts
+- Namespaces isolate data; type is text or vector.
+- Text namespaces use automatic embeddings; vector namespaces require vector_dimension.
+- Search uses ITS scoring with human-readable labels and numeric scores (0 to 1).
+- Text uploads are async; vector uploads are sync and immediately searchable.
+
+## REST API endpoints (summary)
+
+### Namespaces
+- POST /namespaces (create)
+	- Body:
+		- namespace_name (string, required): unique name (alphanumeric, hyphens, underscores only).
+		- type (string, required): "text" or "vector".
+		- vector_dimension (number, required for vector): embedding dimension (e.g., 1536).
+	- Notes:
+		- Names must be unique in your account.
+		- Type cannot be changed after creation.
+		- Vector dimension cannot be modified after creation.
+		- Creation counts toward tier limits.
+	- Use cases: create isolated datasets for different products, teams, or embedding types.
+	- Common responses: 201, 400, 401, 403 (limit/activation), 409, 500.
+	- Example response:
+		{
+			"status": "success",
+			"message": "Namespace 'my-documents' created successfully. ✅",
+			"namespace_name": "my-documents"
+		}
+	- Example request (curl):
+		curl -X POST "https://api.moorcheh.ai/v1/namespaces" \
+			-H "Content-Type: application/json" \
+			-H "x-api-key: your-api-key-here" \
+			-d '{"namespace_name":"my-documents","type":"text"}'
+	\- Example request (SDK):
+		with MoorchehClient() as client:
+				client.documents.get(namespace_name="demo_docs", ids=["doc1"])
+
+	#### documents/get failure modes and error taxonomy
+
+	| Status | Meaning | Retry? | Client Action | Fields Present |
+	|--------|---------|--------|--------------|----------------|
+	| 200    | All requested documents found and returned | No | Use result | items, request_id |
+	| 207    | Partial: some docs missing/unavailable | If retryable | Use found docs, check not_found_ids, retry if retryable | items, not_found_ids, error_code, retryable, request_id |
+	| 404    | Namespace or all docs not found | No | Surface error | error, error_code, request_id |
+	| 429    | Rate limited | Yes | Retry with backoff | error, error_code, retryable, request_id, Retry-After header |
+	| 5xx    | Backend/internal error | Yes | Retry with backoff | error, error_code, retryable, request_id, Retry-After header |
+
+	- Error response fields:
+		- error_code (string): stable error code (e.g., RATE_LIMITED, NAMESPACE_NOT_READY, UPLOAD_IN_PROGRESS, INTERNAL_DEPENDENCY_FAILURE, NOT_FOUND, PARTIAL_SUCCESS).
+		- retryable (boolean): true if client should retry (e.g., for 429, 5xx, or transient 207).
+		- request_id (string): unique request/correlation ID (may also be in x-request-id header).
+		- not_found_ids (array): list of missing/unavailable IDs.
+		- error (string): human-readable error message.
+
+	- Consistency/availability:
+		- documents/get reads from the source-of-truth document store (should be available immediately after upload/validation), not the search index.
+		- If get returns 207, not_found_ids may include IDs that are temporarily unavailable (e.g., ingestion in progress, backend degraded) or genuinely missing; error_code and retryable clarify which.
+
+	- Partial success contract (207):
+		- not_found_ids: always present for missing/unavailable IDs.
+		- error_code: present if any unavailable IDs are due to transient/backend issues (e.g., UPLOAD_IN_PROGRESS).
+		- retryable: true if retrying may succeed (e.g., backend recovery, ingestion completion).
+
+	- Retry/backoff:
+		- documents/get is safe to retry on 429, 5xx, and retryable 207 errors.
+		- SDK defaults: max_retries=3, exponential backoff with jitter, honors Retry-After header.
+
+	- Example error response (partial, retryable):
+		{
+			"items": [ ... ],
+			"not_found_ids": ["doc-2"],
+			"error_code": "UPLOAD_IN_PROGRESS",
+			"retryable": true,
+			"request_id": "req-abc123"
+		}
+
+	- Example error response (permanent not found):
+		{
+			"items": [ ... ],
+			"not_found_ids": ["doc-2"],
+			"error_code": "NOT_FOUND",
+			"retryable": false,
+			"request_id": "req-def456"
+		}
+
+	- Example error response (rate limited):
+		{
+			"error": "Rate limit exceeded",
+			"error_code": "RATE_LIMITED",
+			"retryable": true,
+			"request_id": "req-ghi789"
+		}
+
+	- Example error response (internal error):
+		{
+			"error": "Internal dependency failure",
+			"error_code": "INTERNAL_DEPENDENCY_FAILURE",
+			"retryable": true,
+			"request_id": "req-jkl012"
+		}
+- GET /namespaces (list)
+	- Response:
+		- namespaces: array of { namespace_name, type, vector_dimension, itemCount, createdAt }.
+	- Use cases: dashboards, usage analytics, dropdown population, storage monitoring.
+	- Notes: no pagination or continuation tokens documented; returns all namespaces.
+	- Common responses: 200, 401, 403, 429, 500.
+	- Example response:
+		{
+			"namespaces": [
+				{
+					"namespace_name": "my_documents",
+					"type": "text",
+					"vector_dimension": null,
+					"itemCount": 1247,
+					"createdAt": "2024-01-15T10:30:00.000Z"
+				}
+			]
+		}
+	- Example request (curl):
+		curl -X GET "https://api.moorcheh.ai/v1/namespaces" \
+			-H "x-api-key: your-api-key-here"
+	- Example request (SDK):
+		with MoorchehClient() as client:
+				client.namespaces.list()
+- DELETE /namespaces/{namespace_name} (delete)
+	- Response (202):
+		- status: "pending".
+		- message: confirmation.
+	- Notes: async deletion; irreversible.
+		- Deletion may take minutes for large namespaces.
+		- Names become reusable after deletion completes.
+	- Best practices: verify name, back up important data, confirm via list after deletion.
+	- Common responses: 202, 401, 403, 404, 429, 500.
+	- Example response:
+		{
+			"status": "pending",
+			"message": "Request accepted. Namespace 'my-documents' has been queued for deletion."
+		}
+	- Example request (curl):
+		curl -X DELETE "https://api.moorcheh.ai/v1/namespaces/my-documents" \
+			-H "x-api-key: your-api-key-here"
+	- Example request (SDK):
+		with MoorchehClient() as client:
+				client.namespaces.delete(namespace_name="my-documents")
+
+### Data operations: text documents
+- POST /namespaces/{namespace_name}/documents (upload text)
+	- Body: documents (array, required). Each document is a flat object.
+		- id (string or number, required): unique document ID within namespace.
+		- text (string, required): main document text.
+		- Any other fields are treated as metadata (key-value pairs).
+	- Text limits: min 10 chars, max 50,000 chars per doc.
+	- Batch: max 100 docs per request; recommended 25-50.
+	- Metadata limits: max 2KB per doc, up to 50 keys.
+	- Response (202 or 207):
+		- status: "success" or "partial".
+		- message: human-readable confirmation.
+		- upload_id: upload batch ID for tracking.
+		- namespace_name: target namespace.
+		- documents_processed: count of processed docs.
+		- processing_status: in_progress, completed, or failed.
+		- estimated_completion: ISO 8601 timestamp.
+		- uploaded_documents: array of { id, status, character_count }.
+	- Processing pipeline: validation, text processing, embedding generation, index updates, metadata enrichment.
+	- Notes:
+		- Text uploads are async; wait briefly before search.
+		- IDs must be unique; reusing an ID overwrites prior entry.
+		- Document id must be a non-empty string or number.
+	- Best practices:
+		- Chunk long documents into coherent sections.
+		- Use consistent metadata schema across documents.
+		- Upload in batches (25-50) for best throughput.
+	- Use cases: knowledge bases, support docs, research corpora, training materials.
+	- Common responses: 202, 207, 400, 401, 403, 404, 500.
+	- Example response:
+		{
+			"status": "success",
+			"message": "2 documents uploaded successfully to namespace 'technical-docs'",
+			"upload_id": "upload_1234567890",
+			"namespace_name": "technical-docs",
+			"documents_processed": 2,
+			"processing_status": "in_progress",
+			"estimated_completion": "2024-01-15T10:35:00Z",
+			"uploaded_documents": [
+				{ "id": "doc_001", "status": "processing", "character_count": 89 },
+				{ "id": "doc_002", "status": "processing", "character_count": 112 }
+			]
+		}
+	- Example request (curl):
+		curl -X POST "https://api.moorcheh.ai/v1/namespaces/demo-namespace/documents" \
+			-H "Content-Type: application/json" \
+			-H "x-api-key: your-api-key-here" \
+			-d '{"documents":[{"id":"doc_001","text":"Machine learning...","title":"Intro","category":"education"}]}'
+	- Example request (SDK):
+		with MoorchehClient() as client:
+				client.documents.upload(
+						namespace_name="demo-namespace",
+						documents=[{"id":"doc_001","text":"Machine learning...","title":"Intro","category":"education"}]
+				)
+- POST /namespaces/{namespace_name}/documents/get (get documents)
+	- Body: ids (array, required, max 100 IDs per request).
+	- Response (200 or 207):
+		- status: "success" or "partial".
+		- message: confirmation.
+		- requested_ids: count requested.
+		- found_items: count returned.
+		- items: array of documents { id, text, metadata }.
+		- not_found_ids: array of missing IDs (only when partial).
+	- Notes:
+		- Non-existent IDs are ignored and reported in not_found_ids.
+		- Use for retrieval by ID; use search endpoint for semantic retrieval.
+	- Best practices: batch retrieval (up to 100) and cache frequently accessed documents.
+	- Common responses: 200, 207, 400, 401, 403, 404, 429, 500.
+	- Example response:
+		{
+			"status": "success",
+			"message": "Successfully retrieved 1 items from namespace 'demo_docs'.",
+			"requested_ids": 1,
+			"found_items": 1,
+			"items": [
+				{ "id": "doc1", "metadata": {}, "text": "This is the first document about Moorcheh." }
+			]
+		}
+	- Example request (curl):
+		curl -X POST "https://api.moorcheh.ai/v1/namespaces/demo_docs/documents/get" \
+			-H "x-api-key: your-api-key-here" \
+			-H "Content-Type: application/json" \
+			-d '{"ids":["doc1"]}'
+	- Example request (SDK):
+		with MoorchehClient() as client:
+				client.documents.get(namespace_name="demo_docs", ids=["doc1"])
+- POST /namespaces/{namespace_name}/documents/delete (delete documents)
+	- Body: ids (array, required, max 1000 IDs per request).
+	- Response (200 or 207):
+		- status: "success" or "partial".
+		- message: confirmation.
+		- requested_deletions: count requested.
+		- actual_deletions: count deleted.
+		- remaining_items: namespace item count after deletion.
+		- requested_ids: list of requested IDs.
+		- unprocessed_ids: list of IDs not deleted (only when partial).
+	- Notes:
+		- Deletes are permanent and decrement total item count.
+		- Use documents/delete for text and vectors/delete for vector data.
+	- Best practices: verify IDs, delete in batches, log partial failures.
+	- Common responses: 200, 207, 400, 401, 403, 404, 429, 500.
+	- Example response:
+		{
+			"status": "success",
+			"message": "Successfully processed deletion request. Requested: 1, Actually deleted: 0 items from namespace 'test'.",
+			"requested_deletions": 1,
+			"actual_deletions": 0,
+			"remaining_items": 1,
+			"requested_ids": ["doc-001"]
+		}
+	- Example request (curl):
+		curl -X POST "https://api.moorcheh.ai/v1/namespaces/my-namespace/documents/delete" \
+			-H "Content-Type: application/json" \
+			-H "x-api-key: your-api-key-here" \
+			-d '{"ids":["document-001","document-002"]}'
+	- Example request (SDK):
+		with MoorchehClient() as client:
+				client.documents.delete(namespace_name="my-namespace", ids=["document-001","document-002"])
+
+### Data operations: vectors
+- POST /namespaces/{namespace_name}/vectors (upload vectors)
+	- Body: vectors (array, required). Each vector is a flat object.
+		- id (string, required): unique vector ID.
+		- vector (array of numbers, required): embedding values.
+		- text (string, optional): original text for display.
+		- Any other fields are treated as metadata.
+	- Dimension must match namespace dimension exactly.
+	- Batch: max 1000 vectors; recommended 100-500.
+	- Value range: normalized vectors preferred (typical -1.0 to 1.0), float32.
+	- Response (201 or 207):
+		- status: "success" or "partial".
+		- message: confirmation.
+		- upload_id: upload batch ID.
+		- namespace_name: target namespace.
+		- vectors_processed: count processed.
+		- processing_status: completed (vectors are sync).
+		- uploaded_vectors: array of { id, status, dimension, created_at }.
+	- Processing pipeline: dimension validation, format validation, index insertion, metadata storage, immediate availability.
+	- Notes:
+		- Vector uploads are sync; immediately searchable.
+		- All vectors in a batch must share the same dimension.
+		- Vector id must be a non-empty string.
+	- Best practices:
+		- Normalize vectors, use consistent preprocessing.
+		- Include original text when possible for display.
+	- Use cases: similarity search, recommendations, deduplication, clustering.
+	- Common responses: 201, 207, 400, 401, 403, 404, 500.
+	- Example response:
+		{
+			"status": "success",
+			"message": "2 vectors uploaded successfully to namespace 'product-embeddings'",
+			"upload_id": "upload_vec_1234567890",
+			"namespace_name": "product-embeddings",
+			"vectors_processed": 2,
+			"processing_status": "completed",
+			"uploaded_vectors": [
+				{ "id": "prod_001", "status": "completed", "dimension": 4, "created_at": "2024-01-15T10:30:00Z" },
+				{ "id": "prod_002", "status": "completed", "dimension": 4, "created_at": "2024-01-15T10:30:00Z" }
+			]
+		}
+	- Example request (curl):
+		curl -X POST "https://api.moorcheh.ai/v1/namespaces/my-vectors/vectors" \
+			-H "Content-Type: application/json" \
+			-H "x-api-key: your-api-key-here" \
+			-d '{"vectors":[{"id":"vec_001","vector":[0.1,-0.2,0.3],"text":"Machine learning"}]}'
+	- Example request (SDK):
+		with MoorchehClient() as client:
+				client.vectors.upload(
+						namespace_name="my-vectors",
+						vectors=[{"id":"vec_001","vector":[0.1,-0.2,0.3],"text":"Machine learning"}]
+				)
+- POST /namespaces/{namespace_name}/vectors/delete (delete vectors)
+	- Body: ids (array, required, max 1000 IDs per request).
+	- Response: same fields as documents delete.
+	- Notes: IDs can be strings or numbers; converted to strings internally.
+	- Common responses: 200, 207, 400, 401, 403, 404, 429, 500.
+	- Example request (curl):
+		curl -X POST "https://api.moorcheh.ai/v1/namespaces/my-vectors/vectors/delete" \
+			-H "Content-Type: application/json" \
+			-H "x-api-key: your-api-key-here" \
+			-d '{"ids":["vec_001","vec_002"]}'
+	- Example request (SDK):
+		with MoorchehClient() as client:
+				client.vectors.delete(namespace_name="my-vectors", ids=["vec_001","vec_002"])
+
+### File uploads
+- POST /namespaces/{namespace_name}/upload-url (get pre-signed S3 URL)
+	- Use this for file uploads; supports up to 5GB.
+	- Body:
+		- fileName (string, required): target filename including extension.
+	- Response:
+		- uploadUrl: pre-signed S3 URL for PUT upload.
+		- key: S3 object key.
+		- contentType: Content-Type to use in PUT.
+		- expiresIn: URL validity in seconds (default 900).
+		- method: HTTP method for upload (PUT).
+		- hint: human-readable upload instructions.
+	- URL expires in 15 minutes; upload via PUT to uploadUrl with Content-Type.
+	- Supported types include: .pdf, .docx, .xlsx, .json, .txt, .csv, .md
+	- Notes: pre-signed URL upload is the supported file upload path; supports up to 5GB.
+		- Upload URL expires in 15 minutes; request a new URL if expired.
+		- After S3 upload, files are processed through the document pipeline.
+		- Use search or get documents after a short delay to confirm ingestion (this is indexing latency, not the S3 upload time).
+	- Common responses: 200, 400 (missing fileName/unsupported type), 401, 404.
+	- Example response:
+		{
+			"uploadUrl": "https://s3.us-east-1.amazonaws.com/...",
+			"key": "ownerId/namespace/document.pdf",
+			"contentType": "application/pdf",
+			"expiresIn": 900,
+			"method": "PUT",
+			"hint": "Upload the file with: PUT <uploadUrl> with header Content-Type: application/pdf and body = file bytes"
+		}
+	- Example request (curl):
+		curl -X POST "https://api.moorcheh.ai/v1/namespaces/my-documents/upload-url" \
+			-H "x-api-key: your-api-key-here" \
+			-H "Content-Type: application/json" \
+			-d '{"fileName":"document.pdf"}'
+	- Example request (S3 PUT):
+		curl -X PUT "<uploadUrl>" \
+			-H "Content-Type: application/pdf" \
+			--data-binary "@/path/to/document.pdf"
+- DELETE /namespaces/{namespace_name}/delete-file (delete file(s))
+	- At least one of: body fileName, body fileNames, or query fileName.
+	- Body:
+		- fileName (string, optional): single file.
+		- fileNames (array, optional): multiple files.
+	- Query:
+		- fileName (string, optional): alternative single-file input.
+	- Response:
+		- success: boolean.
+		- message: confirmation.
+		- namespace: namespace name.
+		- results: array of { fileName, status (deleted or error), message }.
+	- Notes:
+		- DELETE is required; files are permanently deleted from S3.
+		- Each request counts as one API call even for multiple files.
+	- Common responses: 200, 400, 401, 404, 429.
+	- Example response:
+		{
+			"success": true,
+			"message": "File deletion process completed.",
+			"namespace": "my-namespace",
+			"results": [
+				{ "fileName": "document.pdf", "status": "deleted", "message": "File deletion initiated successfully" },
+				{ "fileName": "missing.pdf", "status": "error", "message": "File not found" }
+			]
+		}
+	- Example request (curl):
+		curl -X DELETE "https://api.moorcheh.ai/v1/namespaces/my-namespace/delete-file" \
+			-H "x-api-key: your-api-key-here" \
+			-H "Content-Type: application/json" \
+			-d '{"fileName":"document.pdf"}'
+
+### Search
+- POST /search
+	- Body:
+		- query (string or array, required): text query or vector array.
+			- For text: supports filters appended at end.
+			- For vector: array of numbers (must match namespace dimension).
+		- namespaces (array, required): list of namespaces to search; all must be same type.
+		- top_k (number, optional, default 10): number of results to return.
+		- kiosk_mode (boolean, optional): when true, filters out low-relevance results; requires threshold.
+		- threshold (number, optional): minimum ITS score (0-1); required when kiosk_mode is true.
+	- Filters in text query:
+		- Metadata filters: #key:value (e.g., #category:tech).
+		- Keyword filters: #keyword (e.g., #urgent).
+		- Filters must be placed at the end of the query; use hyphens instead of spaces in filter values.
+		- Metadata filter meaning: exact-match filter against document metadata fields.
+		- Keyword filter meaning: keyword must appear in document text content.
+		- You can combine multiple filters in one query.
+		- Examples:
+			- authentication #category:security #important
+			- returns-policy #priority:high #urgent
+			- "refund policy" #category:billing #keyword
+	- ITS labels by score:
+		- Close Match: >= 0.894
+		- Very High: 0.632 to < 0.894
+		- High: 0.447 to < 0.632
+		- Good: 0.316 to < 0.447
+		- Low: 0.224 to < 0.316
+		- Very Low: 0.1 to < 0.224
+		- Irrelevant: < 0.1
+	- Response:
+		- results: array of { id, score, label, text, metadata }.
+			- id: document ID.
+			- score: ITS score (0-1).
+			- label: human-readable ITS label.
+			- text: original text (text namespaces).
+			- metadata: user metadata.
+		- execution_time: total processing time in seconds.
+		- timings: breakdown for each phase (authorize, parseValidate, validateNamespace, prepareVector, fetchData, earlyFilter, calculateDistance, selectCandidates, fetchTopCandidates, applyMetadataFilter, calculateScores, reorderFilter, formatResponse, total).
+		- optimization_info: search strategy details (fetch_strategy, initial_fetch, complete_fetch).
+	- Notes:
+		- Query supports metadata and keyword filters in text mode only.
+		- All namespaces in a single query must be of the same type.
+	- Best practices:
+		- Use specific queries, reasonable top_k, and threshold in kiosk mode.
+		- Combine filters for precision (query text plus metadata/keyword filters).
+	- Use cases: document retrieval, support search, research, content discovery.
+	- Common responses: 200, 400, 401, 403, 404, 429, 500.
+	- Example response (truncated):
+		{
+			"results": [
+				{
+					"id": "doc-123",
+					"score": 0.856432,
+					"label": "Close Match",
+					"text": "Machine learning algorithms are computational methods...",
+					"metadata": { "title": "Introduction to ML", "category": "education" }
+				}
+			],
+			"execution_time": 0.451749005,
+			"timings": { "authorize": 0.267880763, "total": 0.451749005 },
+			"optimization_info": { "fetch_strategy": "single_phase_with_early_filtering" }
+		}
+	- Example request (curl):
+		curl -X POST "https://api.moorcheh.ai/v1/search" \
+			-H "Content-Type: application/json" \
+			-H "x-api-key: your-api-key-here" \
+			-d '{"query":"machine learning","namespaces":["my-documents"],"top_k":10,"kiosk_mode":true,"threshold":0.25}'
+	- Example request (SDK):
+		with MoorchehClient() as client:
+			client.similarity_search.query(
+				namespaces=["my-documents"],
+				query="machine learning",
+				top_k=10,
+				kiosk_mode=True,
+				threshold=0.25
+			)
+
+### AI generation
+- POST /answer
+	- Search Mode: namespace is a non-empty string (RAG over uploaded data).
+	- Direct AI Mode: namespace is empty string "" (no search).
+	- Body fields:
+		- namespace (string, required): namespace name or empty string for Direct AI Mode.
+		- query (string, required): user prompt/question.
+		- top_k (number, optional, default 10): number of context chunks (Search Mode).
+		- threshold (number, optional): minimum ITS score (0-1); required if kiosk_mode is true (Search Mode).
+		- kiosk_mode (boolean, optional): enable threshold filtering (Search Mode).
+		- type (string, optional): search type, "text" by default.
+		- aiModel (string, optional): model ID from Available Models list.
+		- chatHistory (array, optional): list of prior turns, each { role, content }.
+		- headerPrompt (string, optional): instruction prepended to model.
+		- footerPrompt (string, optional): instruction appended (default: "Provide a clear and concise answer.").
+		- temperature (number, optional, default 0.7): creativity level (0.0-2.0).
+		- structuredResponse (object, optional): structured output configuration.
+			- enabled (boolean, required true to enable).
+			- schema (object, optional): JSON Schema for structured output.
+			- toolName (string, optional): internal tool name.
+			- toolDescription (string, optional): description for the model.
+	- Structured output:
+		- When enabled, response includes structuredData with fields from schema.
+		- Default schema:
+			- answer (string): main answer.
+			- confidence (number 0-1): confidence score.
+			- sources (array): list of { id, relevance (high|medium|low) }.
+			- summary (string, max 200 chars): short summary.
+			- topics (array of strings): key themes.
+			- followUpQuestions (array of strings): suggested follow-ups.
+		- Required: answer, confidence.
+	- Structured output errors:
+		- enabled not true: normal text response (no structuredData).
+		- Invalid structuredResponse or disallowed body field: 400.
+		- Model does not return structured data: 500.
+	- Field restrictions:
+		- Empty namespace mode allows only: namespace, query, temperature, chatHistory, footerPrompt, headerPrompt, aiModel, structuredResponse.
+		- Provided namespace mode allows all fields.
+	- Temperature guide: 0.0-0.5 factual, 0.5-1.0 balanced, 1.0-2.0 creative.
+	- Example models include Claude Sonnet 4/4.5, Claude Opus 4.5, Llama 4 Maverick, Llama 3.3 70B, DeepSeek R1, Amazon Nova Pro, OpenAI GPT OSS 120B, Qwen 3 32B.
+	- Response:
+		- answer: generated text.
+		- model: model ID used.
+		- contextCount: number of chunks used (Search Mode).
+		- query: original query.
+		- structuredData: object when structuredResponse is enabled.
+	- Notes:
+		- Direct AI Mode ignores search-related fields (top_k, threshold, kiosk_mode, type).
+		- Some models may have different token limits and capabilities.
+		- Failed requests still count toward usage.
+	- Best practices:
+		- Provide clear questions and add chatHistory for multi-turn context.
+		- Use lower temperature for factual outputs.
+		- Use structuredResponse for machine-readable outputs.
+	- Use cases: customer support, internal Q&A, research assistance, content creation.
+	- Common responses: 200, 400, 401, 403, 404, 500.
+	- Example response:
+		{
+			"answer": "Serverless architecture offers several benefits...",
+			"model": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+			"contextCount": 3,
+			"query": "What are the main benefits of using serverless architecture?"
+		}
+	- Example request (curl):
+		curl -X POST "https://api.moorcheh.ai/v1/answer" \
+			-H "Content-Type: application/json" \
+			-H "x-api-key: your-api-key-here" \
+			-d '{"namespace":"my-document-collection","query":"What are the main benefits of Moorcheh?","type":"text","top_k":5}'
+	- Example request (SDK, Search Mode):
+		with MoorchehClient() as client:
+				client.answer.generate(namespace="my-document-collection", query="What are the main benefits of Moorcheh?", top_k=5)
+	- Example request (SDK, Direct AI Mode):
+		with MoorchehClient() as client:
+				client.answer.generate(namespace="", query="Explain quantum computing in simple terms", ai_model="anthropic.claude-sonnet-4-20250514-v1:0", temperature=0.7)
+
+## Python SDK (key methods and behavior)
+
+### Client initialization
+- MoorchehClient(api_key=None, base_url=None, timeout=30.0)
+	- api_key defaults to MOORCHEH_API_KEY
+	- base_url defaults to MOORCHEH_BASE_URL or production base
+	- Use context manager for cleanup and connection pooling.
+	- Exceptions: AuthenticationError for missing/invalid API key; APIError for non-2xx responses.
+### Async client
+- AsyncMoorchehClient(api_key=None, base_url=None, timeout=30.0)
+	- Async counterpart with the same method surfaces and parameters as MoorchehClient.
+	- Use async context manager (async with) for cleanup and connection pooling.
+	- Example (SDK):
+		async with AsyncMoorchehClient() as client:
+				await client.namespaces.list()
+	- Example (notebook-friendly):
+		import asyncio
+
+		async def main():
+			async with AsyncMoorchehClient() as client:
+				await client.namespaces.list()
+
+		await main()
+
+### Namespaces
+- namespaces.create(namespace_name, type, vector_dimension=None)
+	- Raises ConflictError, InvalidInputError.
+- namespaces.list()
+	- Returns dict with namespaces array.
+	- Raises AuthenticationError, APIError.
+- namespaces.delete(namespace_name)
+	- Async delete; raises NamespaceNotFound, AuthenticationError, APIError.
+
+### Documents
+- documents.upload(namespace_name, documents)
+	- Text uploads are async; wait briefly before search.
+	- Raises NamespaceNotFound, InvalidInputError.
+- documents.get(namespace_name, ids)
+	- Supports partial success for missing IDs.
+	- Raises NamespaceNotFound, InvalidInputError.
+- documents.delete(namespace_name, ids)
+	- Deletes by ID (max 1000).
+	- Raises NamespaceNotFound, InvalidInputError.
+- File uploads: use the REST upload-url and delete-file endpoints with the pre-signed S3 flow.
+
+### Vectors
+- vectors.upload(namespace_name, vectors)
+	- Vectors must match namespace dimension; sync and immediately searchable.
+	- Raises NamespaceNotFound, InvalidInputError.
+- vectors.delete(namespace_name, ids)
+	- Deletes by ID (max 1000).
+	- Raises NamespaceNotFound, InvalidInputError.
+
+### Search and AI
+- similarity_search.query(namespaces, query, top_k=10, threshold=None, kiosk_mode=False)
+	- Raises NamespaceNotFound, InvalidInputError.
+- answer.generate(namespace, query, top_k=10, threshold=None, kiosk_mode=False, ai_model=..., chat_history=None, temperature=0.7, header_prompt=None, footer_prompt=None, structured_response=None)
+	- Empty namespace enables Direct AI Mode.
+	- Raises NamespaceNotFound, InvalidInputError.
+
+## Best practices and coding standards (SDK)
+- Use context managers to manage resources.
+- Use environment variables for secrets (MOORCHEH_API_KEY).
+- Batch uploads to avoid timeouts and improve throughput.
+- Implement retries for transient errors (RateLimitError, ServerError).
+- SDK retry behavior: retries on HTTP 429 and >=500 or network timeouts; honors Retry-After when present; exponential backoff (1s, 2s, 4s...) with jitter, capped at 60s; default max_retries=3; no retries on 400-level validation errors.
+- Use consistent document schemas and meaningful IDs.
+- Chunk long documents into coherent pieces before upload.
+- After text uploads, wait briefly before search (async indexing).
+- Set reasonable top_k and thresholds to balance quality vs latency.
+- Add logging and tests around SDK integration.
+
+## Observability (SDK)
+- The SDK uses Python logging and attaches a NullHandler by default; configure logging in your app to see logs.
+- Retry behavior logs warnings with status codes and wait times; client close logs info.
+- Example logging setup is in the examples directory (logging.basicConfig with timestamped format).
+
+## Error handling (SDK)
+- Base: MoorchehError, APIError
+- Common: AuthenticationError, ConflictError, NamespaceNotFound, ValidationError/InvalidInputError, RateLimitError, ServerError
+
+## Integrations
+- LangChain: https://docs.moorcheh.ai/integrations/langchain/overview
+- LlamaIndex: https://docs.moorcheh.ai/integrations/llamaindex/overview
+- MCP: https://docs.moorcheh.ai/integrations/mcp/overview
+- Chat boilerplate: https://docs.moorcheh.ai/integrations/chat-boilerplate/overview
+
+## Support and contact
+- Docs: https://docs.moorcheh.ai/
+- Discord: https://lnkd.in/gE_Pz_kb
+- Email: support@moorcheh.ai
+- Appointments: https://www.edgeaiinnovations.com/appointments
+
+## License
+- MIT License (see LICENSE in this repo).
+- Copyright 2025 EdgeAI Innovations Inc.
+
+## Notes for LLM use
+- Prefer canonical docs URLs above when citing or linking.
+- If behavior is unclear, defer to API reference pages.
+- Avoid claims not documented in the docs or README.
+
+## Usage calculator inputs (from plans page)
+- API calls per month
+- Gen AI calls per month (Standard/Advanced/Premium tiers)
+- Namespaces
+- Storage chunks
+- Data upload (MB/month)
+
+
