@@ -10,12 +10,12 @@ logger = setup_logging(__name__)
 
 
 class Answer(BaseResource):
-    @required_args(["namespace", "query"], types={"namespace": str, "query": str})
+    @required_args(["query"], types={"query": str})
     def generate(
         self,
-        namespace: str,
         query: str,
-        top_k: int = 5,
+        namespace: str | None = None,
+        top_k: int | None = None,
         ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
         chat_history: list[ChatHistoryItem] | None = None,
         temperature: float = 0.7,
@@ -23,6 +23,7 @@ class Answer(BaseResource):
         footer_prompt: str | None = None,
         threshold: float | None = None,
         kiosk_mode: bool = False,
+        structured_response: dict | None = None,
     ) -> AnswerResponse:
         """
         Generates an AI answer based on a search query within a namespace.
@@ -31,8 +32,8 @@ class Answer(BaseResource):
         uses a Large Language Model (LLM) to generate a conversational response.
 
         Args:
-            namespace: The name of the text-based namespace to search within.
             query: The question or prompt to answer.
+            namespace: The name of the text-based namespace to search within.
             top_k: The number of search results to use as context. Defaults to 5.
             ai_model: The identifier of the LLM to use.
                 Defaults to "anthropic.claude-sonnet-4-20250514-v1:0".
@@ -67,43 +68,71 @@ class Answer(BaseResource):
             APIError: For other API errors (e.g., 500).
             MoorchehError: For network or connection issues.
         """
-        logger.info(
-            "Attempting to get generative answer for query in namespace"
-            f" '{namespace}'..."
-        )
+        if namespace is None or not isinstance(namespace, str):
+            raise InvalidInputError("Argument 'namespace' must be a string.")
+        if namespace:
+            if top_k is not None:
+                if not isinstance(top_k, int) or top_k <= 0:
+                    raise InvalidInputError("'top_k' must be a positive integer.")
+            if threshold is not None:
+                if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
+                    raise InvalidInputError(
+                        "'threshold' must be a number between 0 and 1, or None."
+                    )
+                if not kiosk_mode:
+                    logger.warning(
+                        "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
+                    )
+            logger.info(
+                "Attempting to get generative answer for query in namespace"
+                f" '{namespace}'..."
+            )
+        else:
+            if top_k is not None:
+                logger.warning(
+                    "'top_k' was provided with an empty 'namespace' and will be ignored."
+                )
+            if kiosk_mode:
+                logger.warning(
+                    "'kiosk_mode' was enabled with an empty 'namespace' and will be ignored."
+                )
+            if threshold is not None:
+                logger.warning(
+                    "'threshold' was provided with an empty 'namespace' and will be ignored."
+                )
+            logger.info(
+                "Attempting to get generative answer for query without namespace..."
+            )
         if not ai_model:
             raise InvalidInputError("Argument 'ai_model' cannot be empty.")
-        if not isinstance(top_k, int) or top_k <= 0:
-            raise InvalidInputError("'top_k' must be a positive integer.")
-        if not isinstance(temperature, (int, float)) or not (0 <= temperature <= 1):
+
+        if not isinstance(temperature, (int, float)) or not (0 <= temperature <= 2):
             raise InvalidInputError(
-                "'temperature' must be a number between 0.0 and 1.0."
+                "'temperature' must be a number between 0.0 and 2.0."
             )
-        if threshold is not None:
-            if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
-                raise InvalidInputError(
-                    "'threshold' must be a number between 0 and 1, or None."
-                )
-            if not kiosk_mode:
-                logger.warning(
-                    "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
-                )
+
+        if structured_response is not None and not isinstance(
+            structured_response, dict
+        ):
+            raise InvalidInputError("'structured_response' must be a dict or None.")
 
         payload: dict[str, Any] = {
             "namespace": namespace,
             "query": query,
-            "top_k": top_k,
-            "type": "text",  # Hardcoded as per API design
             "aiModel": ai_model,
             "chatHistory": chat_history if chat_history is not None else [],
             "temperature": temperature,
             "headerPrompt": header_prompt if header_prompt is not None else "",
             "footerPrompt": footer_prompt if footer_prompt is not None else "",
-            "kiosk_mode": kiosk_mode,
         }
-        # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
-        if kiosk_mode:
-            payload["threshold"] = threshold if threshold is not None else 0.25
+        if structured_response is not None:
+            payload["structuredResponse"] = structured_response
+        if namespace:
+            payload["type"] = "text"  # Hardcoded as per API design
+            payload["top_k"] = top_k if top_k is not None else 5
+            payload["kiosk_mode"] = kiosk_mode
+            if kiosk_mode:
+                payload["threshold"] = threshold if threshold is not None else 0.25
         logger.debug(f"Generative answer payload: {payload}")
 
         response_data = self._client._request(
@@ -123,12 +152,12 @@ class Answer(BaseResource):
 
 
 class AsyncAnswer(AsyncBaseResource):
-    @required_args(["namespace", "query"], types={"namespace": str, "query": str})
+    @required_args(["query"], types={"query": str})
     async def generate(
         self,
-        namespace: str,
         query: str,
-        top_k: int = 5,
+        namespace: str | None = None,
+        top_k: int | None = None,
         ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
         chat_history: list[ChatHistoryItem] | None = None,
         temperature: float = 0.7,
@@ -136,6 +165,7 @@ class AsyncAnswer(AsyncBaseResource):
         footer_prompt: str | None = None,
         threshold: float | None = None,
         kiosk_mode: bool = False,
+        structured_response: dict | None = None,
     ) -> AnswerResponse:
         """
         Generates an AI answer based on a search query within a namespace asynchronously.
@@ -144,8 +174,8 @@ class AsyncAnswer(AsyncBaseResource):
         uses a Large Language Model (LLM) to generate a conversational response.
 
         Args:
-            namespace: The name of the text-based namespace to search within.
             query: The question or prompt to answer.
+            namespace: The name of the text-based namespace to search within.
             top_k: The number of search results to use as context. Defaults to 5.
             ai_model: The identifier of the LLM to use.
                 Defaults to "anthropic.claude-sonnet-4-20250514-v1:0".
@@ -186,42 +216,70 @@ class AsyncAnswer(AsyncBaseResource):
             MoorchehError: For network issues.
         """
 
+        if namespace is None or not isinstance(namespace, str):
+            raise InvalidInputError("Argument 'namespace' must be a string.")
+        if namespace:
+            if top_k is not None:
+                if not isinstance(top_k, int) or top_k <= 0:
+                    raise InvalidInputError("'top_k' must be a positive integer.")
+            if threshold is not None:
+                if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
+                    raise InvalidInputError(
+                        "'threshold' must be a number between 0 and 1, or None."
+                    )
+                if not kiosk_mode:
+                    logger.warning(
+                        "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
+                    )
+            logger.info(
+                f"Attempting to generate answer for query '{query}' in namespace"
+                f" '{namespace}' (model={ai_model})..."
+            )
+        else:
+            if top_k is not None:
+                logger.warning(
+                    "'top_k' was provided with an empty 'namespace' and will be ignored."
+                )
+            if kiosk_mode:
+                logger.warning(
+                    "'kiosk_mode' was enabled with an empty 'namespace' and will be ignored."
+                )
+            if threshold is not None:
+                logger.warning(
+                    "'threshold' was provided with an empty 'namespace' and will be ignored."
+                )
+            logger.info(
+                f"Attempting to generate answer for query '{query}' without namespace"
+                f" (model={ai_model})..."
+            )
+
         if not ai_model:
             raise InvalidInputError("Argument 'ai_model' cannot be empty.")
-        if not isinstance(top_k, int) or top_k <= 0:
-            raise InvalidInputError("'top_k' must be a positive integer.")
-        if not isinstance(temperature, (int, float)) or not (0 <= temperature <= 1):
-            raise InvalidInputError("'temperature' must be between 0.0 and 1.0.")
-        if threshold is not None:
-            if not isinstance(threshold, (int, float)) or not (0 <= threshold <= 1):
-                raise InvalidInputError(
-                    "'threshold' must be a number between 0 and 1, or None."
-                )
-            if not kiosk_mode:
-                logger.warning(
-                    "'threshold' is set but 'kiosk_mode' is disabled. 'threshold' will be ignored."
-                )
+        if not isinstance(temperature, (int, float)) or not (0 <= temperature <= 2):
+            raise InvalidInputError("'temperature' must be between 0.0 and 2.0.")
 
-        logger.info(
-            f"Attempting to generate answer for query '{query}' in namespace"
-            f" '{namespace}' (model={ai_model})..."
-        )
+        if structured_response is not None and not isinstance(
+            structured_response, dict
+        ):
+            raise InvalidInputError("'structured_response' must be a dict or None.")
 
         payload: dict[str, Any] = {
             "namespace": namespace,
             "query": query,
-            "top_k": top_k,
-            "type": "text",  # Hardcoded as per API design
             "aiModel": ai_model,
             "chatHistory": chat_history if chat_history is not None else [],
             "temperature": temperature,
             "headerPrompt": header_prompt if header_prompt is not None else "",
             "footerPrompt": footer_prompt if footer_prompt is not None else "",
-            "kiosk_mode": kiosk_mode,
         }
-        # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
-        if kiosk_mode:
-            payload["threshold"] = threshold if threshold is not None else 0.25
+        if structured_response is not None:
+            payload["structuredResponse"] = structured_response
+        if namespace:
+            payload["type"] = "text"  # Hardcoded as per API design
+            payload["top_k"] = top_k if top_k is not None else 5
+            payload["kiosk_mode"] = kiosk_mode
+            if kiosk_mode:
+                payload["threshold"] = threshold if threshold is not None else 0.25
         logger.debug(f"Generative answer payload: {payload}")
 
         response_data = await self._client._request(

@@ -11,3 +11,5 @@ class AnswerResponse(TypedDict):
     model: str
     contextCount: int
     query: str
+    usedContext: bool | None
+    structuredData: dict | None
