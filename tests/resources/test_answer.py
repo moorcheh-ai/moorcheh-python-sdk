@@ -77,8 +77,7 @@ def test_generate_answer_with_prompts(client, mocker, mock_response):
 @pytest.mark.parametrize(
     "ns, q, tk, model, temp, history, msg",
     [
-        ("", "q", 5, "m", 0.5, [], "Argument 'namespace' cannot be empty."),
-        (None, "q", 5, "m", 0.5, [], "Argument 'namespace' cannot be None."),
+        (None, "q", 5, "m", 0.5, [], "Argument 'namespace' must be a string."),
         ("ns", "", 5, "m", 0.5, [], "Argument 'query' cannot be empty."),
         ("ns", "q", 0, "m", 0.5, [], "'top_k' must be a positive integer"),
         ("ns", "q", -1, "m", 0.5, [], "'top_k' must be a positive integer"),
@@ -88,9 +87,9 @@ def test_generate_answer_with_prompts(client, mocker, mock_response):
             "q",
             5,
             "m",
-            1.1,
+            2.1,
             [],
-            "'temperature' must be a number between 0.0 and 1.0",
+            "'temperature' must be a number between 0.0 and 2.0",
         ),
         (
             "ns",
@@ -99,7 +98,7 @@ def test_generate_answer_with_prompts(client, mocker, mock_response):
             "m",
             -0.1,
             [],
-            "'temperature' must be a number between 0.0 and 1.0",
+            "'temperature' must be a number between 0.0 and 2.0",
         ),
     ],
 )
@@ -127,3 +126,91 @@ def test_get_generative_answer_server_error(client, mocker, mock_response):
     with pytest.raises(APIError, match="API Error: Upstream LLM provider failed"):
         client.answer.generate(namespace=TEST_NAMESPACE, query="test")
     assert client._mock_httpx_instance.request.call_count == 4
+
+
+def test_empty_namespace(client, mocker, mock_response):
+    """Test empty namespace to trigger direct AI mode."""
+    query = "What is Moorcheh?"
+    mock_resp = mock_response(
+        200, json_data={"answer": "Moorcheh is a semantic search engine."}
+    )
+    client._mock_httpx_instance.request.return_value = mock_resp
+    result = client.answer.generate(namespace="", query=query)
+    expected_payload = {
+        "namespace": "",
+        "query": query,
+        "aiModel": "anthropic.claude-sonnet-4-20250514-v1:0",
+        "chatHistory": [],
+        "temperature": 0.7,
+        "headerPrompt": "",
+        "footerPrompt": "",
+    }
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="POST", url="/answer", json=expected_payload, params=None
+    )
+    assert result["answer"] == "Moorcheh is a semantic search engine."
+
+
+def test_structured_response(client, mocker, mock_response):
+    """Test structured_response is accepted."""
+    query = "What is Moorcheh?"
+    structured = {"schema": {"type": "object"}}
+    mock_resp = mock_response(
+        200, json_data={"answer": "Moorcheh is a semantic search engine."}
+    )
+    client._mock_httpx_instance.request.return_value = mock_resp
+    result = client.answer.generate(
+        namespace="my_ns", query=query, structured_response=structured
+    )
+    expected_payload = {
+        "namespace": "my_ns",
+        "query": query,
+        "aiModel": "anthropic.claude-sonnet-4-20250514-v1:0",
+        "chatHistory": [],
+        "temperature": 0.7,
+        "headerPrompt": "",
+        "footerPrompt": "",
+        "type": "text",
+        "top_k": 5,
+        "kiosk_mode": False,
+        "structuredResponse": structured,
+    }
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="POST", url="/answer", json=expected_payload, params=None
+    )
+    assert result["answer"] == "Moorcheh is a semantic search engine."
+
+
+def test_structured_response_with_empty_namespace(client, mocker, mock_response):
+    """Test structured_response is accepted and sent with empty namespace."""
+    query = "What is Moorcheh?"
+    structured = {"schema": {"type": "object"}}
+    mock_resp = mock_response(
+        200, json_data={"answer": "Moorcheh is a semantic search engine."}
+    )
+    client._mock_httpx_instance.request.return_value = mock_resp
+    result = client.answer.generate(
+        namespace="", query=query, structured_response=structured
+    )
+    expected_payload = {
+        "namespace": "",
+        "query": query,
+        "aiModel": "anthropic.claude-sonnet-4-20250514-v1:0",
+        "chatHistory": [],
+        "temperature": 0.7,
+        "headerPrompt": "",
+        "footerPrompt": "",
+        "structuredResponse": structured,
+    }
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="POST", url="/answer", json=expected_payload, params=None
+    )
+    assert result["answer"] == "Moorcheh is a semantic search engine."
+
+
+def test_structured_response_invalid_type(client):
+    """Test structured_response not a dict raises InvalidInputError."""
+    with pytest.raises(InvalidInputError, match="must be a dict or None"):
+        client.answer.generate(
+            namespace="", query="test", structured_response=[1, 2, 3]
+        )
