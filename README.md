@@ -116,7 +116,7 @@ The `MoorchehClient` and `AsyncMoorchehClient` classes provide the same method s
 | `vectors.upload`          | namespace_name, vectors=[{id, vector}] | Upload vectors to a vector namespace.              |
 | `vectors.delete`          | namespace_name, ids                    | Delete vectors by ID.                              |
 | `similarity_search.query` | namespaces, query                      | Run semantic search with text or vector queries.   |
-| `answer.generate`         | namespaces, query                      | Generate a grounded answer from a namespace.       |
+| `answer.generate`         | namespace, query                       | Generate a grounded answer from a namespace.       |
 
 For fully detailed method functionality, please see the [API Reference](https://docs.moorcheh.ai/api-reference/introduction).
 
