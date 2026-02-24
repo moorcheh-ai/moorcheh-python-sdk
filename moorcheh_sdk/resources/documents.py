@@ -163,6 +163,14 @@ class Documents(BaseResource):
             raise InvalidInputError(
                 "All items in 'ids' list must be non-empty strings or integers."
             )
+        for doc_id in ids:
+            if isinstance(doc_id, str) and any(
+                char in doc_id for char in INVALID_ID_CHARS
+            ):
+                raise InvalidInputError(
+                    f"Invalid characters in document ID: '{doc_id}'."
+                    f" Invalid characters: {INVALID_ID_CHARS!r}"
+                )
 
         logger.info(
             f"Attempting to get {len(ids)} document(s) from namespace"
@@ -696,18 +704,21 @@ class AsyncDocuments(AsyncBaseResource):
             raise InvalidInputError(
                 "Maximum of 100 document IDs can be requested per call."
             )
+        if not all(isinstance(item_id, (str, int)) and item_id for item_id in ids):
+            raise InvalidInputError(
+                "All items in 'ids' list must be non-empty strings or integers."
+            )
 
         # Check for invalid characters in IDs (client-side validation)
-        # Assuming IDs should be alphanumeric, dashes, or underscores.
-        # Adjust regex as per API requirements.
-        import re
-
-        invalid_id_pattern = re.compile(r"[^a-zA-Z0-9_\-]")
+        # Uses shared INVALID_ID_CHARS constant for consistency with sync client.
+        # Adjust INVALID_ID_CHARS in utils/constants.py as per API requirements.
         for doc_id in ids:
-            if isinstance(doc_id, str) and invalid_id_pattern.search(doc_id):
+            if isinstance(doc_id, str) and any(
+                char in doc_id for char in INVALID_ID_CHARS
+            ):
                 raise InvalidInputError(
-                    f"Invalid characters in document ID: '{doc_id}'. IDs should be"
-                    " alphanumeric."
+                    f"Invalid characters in document ID: '{doc_id}'."
+                    f" Invalid characters: {INVALID_ID_CHARS!r}"
                 )
 
         logger.info(
