@@ -131,8 +131,10 @@ class Answer(BaseResource):
             payload["type"] = "text"  # Hardcoded as per API design
             payload["top_k"] = top_k if top_k is not None else 5
             payload["kiosk_mode"] = kiosk_mode
-            if kiosk_mode:
-                payload["threshold"] = threshold if threshold is not None else 0.25
+            # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
+            payload["threshold"] = (
+                threshold if (kiosk_mode and threshold is not None) else 0.25
+            )
         logger.debug(f"Generative answer payload: {payload}")
 
         response_data = self._client._request(
@@ -278,8 +280,10 @@ class AsyncAnswer(AsyncBaseResource):
             payload["type"] = "text"  # Hardcoded as per API design
             payload["top_k"] = top_k if top_k is not None else 5
             payload["kiosk_mode"] = kiosk_mode
-            if kiosk_mode:
-                payload["threshold"] = threshold if threshold is not None else 0.25
+            # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
+            payload["threshold"] = (
+                threshold if (kiosk_mode and threshold is not None) else 0.25
+            )
         logger.debug(f"Generative answer payload: {payload}")
 
         response_data = await self._client._request(

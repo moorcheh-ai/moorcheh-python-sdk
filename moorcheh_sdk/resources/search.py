@@ -94,8 +94,9 @@ class Search(BaseResource):
             "kiosk_mode": kiosk_mode,
         }
         # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
-        if kiosk_mode:
-            payload["threshold"] = threshold if threshold is not None else 0.25
+        payload["threshold"] = (
+            threshold if (kiosk_mode and threshold is not None) else 0.25
+        )
 
         logger.debug(f"Search payload: {payload}")
 
@@ -200,8 +201,9 @@ class AsyncSearch(AsyncBaseResource):
             "kiosk_mode": kiosk_mode,
         }
         # Only pass threshold when kiosk_mode is on; default 0.25 if not specified
-        if kiosk_mode:
-            payload["threshold"] = threshold if threshold is not None else 0.25
+        payload["threshold"] = (
+            threshold if (kiosk_mode and threshold is not None) else 0.25
+        )
 
         logger.debug(f"Search payload: {payload}")
 
