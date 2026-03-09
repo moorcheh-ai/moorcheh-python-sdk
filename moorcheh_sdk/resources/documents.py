@@ -777,6 +777,10 @@ class AsyncDocuments(AsyncBaseResource):
             f"Attempting to delete {len(ids)} document(s) from namespace"
             f" '{namespace_name}' with IDs: {ids}"
         )
+        if not all(isinstance(item_id, (str, int)) and item_id for item_id in ids):
+            raise InvalidInputError(
+                "All items in 'ids' list must be non-empty strings or integers."
+            )
 
         response_data = await self._client._request(
             method="POST",
