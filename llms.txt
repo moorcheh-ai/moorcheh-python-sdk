@@ -605,7 +605,7 @@ Moorcheh Python SDK. Use this file as guidance for LLMs and tooling when reading
 				client.answer.generate(namespace="my-document-collection", query="What are the main benefits of Moorcheh?", top_k=5)
 	- Example request (SDK, Direct AI Mode):
 		with MoorchehClient() as client:
-				client.answer.generate(namespace="", query="Explain quantum computing in simple terms", ai_model="anthropic.claude-sonnet-4-20250514-v1:0", temperature=0.7)
+				client.answer.generate(namespace="", query="Explain quantum computing in simple terms", ai_model="anthropic.claude-sonnet-4-6", temperature=0.7)
 
 ## Python SDK (key methods and behavior)
 

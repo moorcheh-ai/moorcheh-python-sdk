@@ -148,7 +148,7 @@ async def test_answer_generate(client):
             "query": "hello",
             "top_k": 5,
             "type": "text",
-            "aiModel": "anthropic.claude-sonnet-4-20250514-v1:0",
+            "aiModel": "anthropic.claude-sonnet-4-6",
             "chatHistory": [],
             "temperature": 0.7,
             "headerPrompt": "",
