@@ -16,7 +16,7 @@ class Answer(BaseResource):
         query: str,
         namespace: str | None = None,
         top_k: int | None = None,
-        ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
+        ai_model: str = "anthropic.claude-sonnet-4-6",
         chat_history: list[ChatHistoryItem] | None = None,
         temperature: float = 0.7,
         header_prompt: str | None = None,
@@ -36,7 +36,7 @@ class Answer(BaseResource):
             namespace: The name of the text-based namespace to search within.
             top_k: The number of search results to use as context. Defaults to 5.
             ai_model: The identifier of the LLM to use.
-                Defaults to "anthropic.claude-sonnet-4-20250514-v1:0".
+                Defaults to "anthropic.claude-sonnet-4-6".
             chat_history: Optional list of previous conversation turns for context.
                 Each item should be a dictionary. Defaults to None.
             temperature: The sampling temperature for the LLM (0.0 to 1.0).
@@ -158,7 +158,7 @@ class AsyncAnswer(AsyncBaseResource):
         query: str,
         namespace: str | None = None,
         top_k: int | None = None,
-        ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
+        ai_model: str = "anthropic.claude-sonnet-4-6",
         chat_history: list[ChatHistoryItem] | None = None,
         temperature: float = 0.7,
         header_prompt: str | None = None,
@@ -178,7 +178,7 @@ class AsyncAnswer(AsyncBaseResource):
             namespace: The name of the text-based namespace to search within.
             top_k: The number of search results to use as context. Defaults to 5.
             ai_model: The identifier of the LLM to use.
-                Defaults to "anthropic.claude-sonnet-4-20250514-v1:0".
+                Defaults to "anthropic.claude-sonnet-4-6".
             chat_history: Optional list of previous conversation turns for context.
                 Each item should be a dictionary. Defaults to None.
             temperature: The sampling temperature for the LLM (0.0 to 1.0).

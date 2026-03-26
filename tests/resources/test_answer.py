@@ -139,7 +139,7 @@ def test_empty_namespace(client, mocker, mock_response):
     expected_payload = {
         "namespace": "",
         "query": query,
-        "aiModel": "anthropic.claude-sonnet-4-20250514-v1:0",
+        "aiModel": "anthropic.claude-sonnet-4-6",
         "chatHistory": [],
         "temperature": 0.7,
         "headerPrompt": "",
@@ -165,7 +165,7 @@ def test_structured_response(client, mocker, mock_response):
     expected_payload = {
         "namespace": "my_ns",
         "query": query,
-        "aiModel": "anthropic.claude-sonnet-4-20250514-v1:0",
+        "aiModel": "anthropic.claude-sonnet-4-6",
         "chatHistory": [],
         "temperature": 0.7,
         "headerPrompt": "",
@@ -195,7 +195,7 @@ def test_structured_response_with_empty_namespace(client, mocker, mock_response)
     expected_payload = {
         "namespace": "",
         "query": query,
-        "aiModel": "anthropic.claude-sonnet-4-20250514-v1:0",
+        "aiModel": "anthropic.claude-sonnet-4-6",
         "chatHistory": [],
         "temperature": 0.7,
         "headerPrompt": "",

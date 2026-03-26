@@ -274,7 +274,7 @@ class LegacyClientMixin:
         namespace: str,
         query: str,
         top_k: int = 5,
-        ai_model: str = "anthropic.claude-sonnet-4-20250514-v1:0",
+        ai_model: str = "anthropic.claude-sonnet-4-6",
         chat_history: list[ChatHistoryItem] | None = None,
         temperature: float = 0.7,
         header_prompt: str | None = None,
@@ -290,7 +290,7 @@ class LegacyClientMixin:
             query: The question or prompt to answer.
             top_k: The number of search results to use as context. Defaults to 5.
             ai_model: The identifier of the LLM to use.
-                Defaults to "anthropic.claude-sonnet-4-20250514-v1:0".
+                Defaults to "anthropic.claude-sonnet-4-6".
             chat_history: Optional list of previous conversation turns for context.
                 Each item should be a dictionary. Defaults to None.
             temperature: The sampling temperature for the LLM (0.0 to 1.0).
