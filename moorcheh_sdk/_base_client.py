@@ -42,7 +42,7 @@ class SyncAPIClient:
                 base_url=base_url,
                 headers=headers,
                 timeout=timeout,
-                verify=ssl.create_default_context(), # Bypasses certifi overhead
+                verify=ssl.create_default_context(),  # Bypasses certifi overhead
             )
 
         self._max_retries = max_retries
@@ -179,7 +179,7 @@ class AsyncAPIClient:
                 base_url=base_url,
                 headers=headers,
                 timeout=timeout,
-                verify=ssl.create_default_context(), # Bypasses certifi overhead
+                verify=ssl.create_default_context(),  # Bypasses certifi overhead
             )
 
         self._max_retries = max_retries
