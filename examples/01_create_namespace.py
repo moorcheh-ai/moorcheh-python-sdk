@@ -66,12 +66,12 @@ def main():
     if vector_dimension:
         logger.info(f"  Dimension: {vector_dimension}")
 
-    # 3. Call the create_namespace method
+    # 3. Call client.namespaces.create
     try:
         # Use the client's context manager for automatic cleanup
         with client:
             # SDK method call will produce its own logs (e.g., request details at DEBUG)
-            response = client.create_namespace(
+            response = client.namespaces.create(
                 namespace_name=namespace_to_create,
                 type=namespace_type,
                 vector_dimension=vector_dimension,

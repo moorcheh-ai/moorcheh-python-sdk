@@ -4,7 +4,7 @@ from typing import TypedDict
 class Namespace(TypedDict):
     namespace_name: str
     type: str
-    itemCount: int
+    item_count: int
     vector_dimension: int | None
 
 

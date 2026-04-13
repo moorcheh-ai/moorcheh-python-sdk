@@ -38,7 +38,7 @@ async def test_namespaces_list(client):
             {
                 "namespace_name": "test",
                 "type": "text",
-                "itemCount": 0,
+                "item_count": 0,
                 "vector_dimension": None,
             }
         ],
@@ -79,6 +79,32 @@ async def test_documents_upload(client):
         assert kwargs["method"] == "POST"
         assert kwargs["path"] == "/namespaces/test/documents"
         assert kwargs["json"] == {"documents": documents}
+
+
+@pytest.mark.asyncio
+async def test_documents_fetch_text_data(client):
+    mock_response = {
+        "status": "success",
+        "message": "Fetched 0 text items.",
+        "namespace": "test",
+        "statistics": {"total_items": 0},
+        "items": [],
+        "execution_time": 0.01,
+    }
+
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = MagicMock(
+            status_code=200, json=lambda: mock_response
+        )
+
+        response = await client.documents.fetch_text_data(namespace_name="test")
+
+        assert response == mock_response
+        mock_request.assert_called_once()
+        args, kwargs = mock_request.call_args
+        assert kwargs["method"] == "GET"
+        assert kwargs["path"] == "/namespaces/test/documents/fetch-text-data"
+        assert kwargs["params"] is None
 
 
 @pytest.mark.asyncio
@@ -148,11 +174,11 @@ async def test_answer_generate(client):
             "query": "hello",
             "top_k": 5,
             "type": "text",
-            "aiModel": "anthropic.claude-sonnet-4-6",
-            "chatHistory": [],
+            "ai_model": "anthropic.claude-sonnet-4-6",
+            "chat_history": [],
             "temperature": 0.7,
-            "headerPrompt": "",
-            "footerPrompt": "",
+            "header_prompt": "",
+            "footer_prompt": "",
             "kiosk_mode": False,
         }
 
@@ -165,15 +191,15 @@ async def test_upload_file_success(client, tmp_path):
     test_file.write_bytes(b"PDF content here")
 
     upload_url_data = {
-        "uploadUrl": "https://example.com/upload",
-        "contentType": "application/pdf",
+        "upload_url": "https://example.com/upload",
+        "content_type": "application/pdf",
     }
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
         "namespace": "test",
-        "fileName": "test_document.pdf",
-        "fileSize": len(test_file.read_bytes()),
+        "file_name": "test_document.pdf",
+        "file_size": len(test_file.read_bytes()),
     }
 
     with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
@@ -196,11 +222,11 @@ async def test_upload_file_success(client, tmp_path):
         first_call = mock_request.call_args_list[0]
         assert first_call.kwargs["method"] == "POST"
         assert first_call.kwargs["path"] == "/namespaces/test/upload-url"
-        assert first_call.kwargs["json"] == {"fileName": "test_document.pdf"}
+        assert first_call.kwargs["json"] == {"file_name": "test_document.pdf"}
 
         second_call = mock_request.call_args_list[1]
         assert second_call.kwargs["method"] == "PUT"
-        assert second_call.kwargs["path"] == upload_url_data["uploadUrl"]
+        assert second_call.kwargs["path"] == upload_url_data["upload_url"]
 
 
 @pytest.mark.asyncio
@@ -210,15 +236,15 @@ async def test_upload_file_with_path_object(client, tmp_path):
     test_file.write_text("Text content")
 
     upload_url_data = {
-        "uploadUrl": "https://example.com/upload",
-        "contentType": "text/plain",
+        "upload_url": "https://example.com/upload",
+        "content_type": "text/plain",
     }
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
         "namespace": "test",
-        "fileName": "document.txt",
-        "fileSize": len(test_file.read_bytes()),
+        "file_name": "document.txt",
+        "file_size": len(test_file.read_bytes()),
     }
 
     with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
@@ -247,8 +273,8 @@ async def test_upload_file_with_file_like_object(client, tmp_path):
     test_file.write_text('{"key": "value"}')
 
     upload_url_data = {
-        "uploadUrl": "https://example.com/upload",
-        "contentType": "application/json",
+        "upload_url": "https://example.com/upload",
+        "content_type": "application/json",
     }
 
     with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
@@ -267,8 +293,8 @@ async def test_upload_file_with_file_like_object(client, tmp_path):
                 "success": True,
                 "message": "File uploaded successfully",
                 "namespace": "test",
-                "fileName": f.name,
-                "fileSize": len(test_file.read_bytes()),
+                "file_name": f.name,
+                "file_size": len(test_file.read_bytes()),
             }
             response = await client.documents.upload_file(
                 namespace_name="test", file_path=f
@@ -314,15 +340,15 @@ async def test_upload_file_valid_extensions(client, tmp_path, file_extension):
     test_file.write_bytes(b"content")
 
     upload_url_data = {
-        "uploadUrl": "https://example.com/upload",
-        "contentType": "application/json",
+        "upload_url": "https://example.com/upload",
+        "content_type": "application/json",
     }
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
         "namespace": "test",
-        "fileName": f"test{file_extension}",
-        "fileSize": len(test_file.read_bytes()),
+        "file_name": f"test{file_extension}",
+        "file_size": len(test_file.read_bytes()),
     }
 
     with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
@@ -448,12 +474,12 @@ async def test_delete_files_success(client):
         "namespace": "test",
         "results": [
             {
-                "fileName": file_names[0],
+                "file_name": file_names[0],
                 "status": "deleted",
                 "message": "File deletion initiated successfully",
             },
             {
-                "fileName": file_names[1],
+                "file_name": file_names[1],
                 "status": "deleted",
                 "message": "File deletion initiated successfully",
             },
@@ -474,7 +500,7 @@ async def test_delete_files_success(client):
         args, kwargs = mock_request.call_args
         assert kwargs["method"] == "DELETE"
         assert kwargs["path"] == "/namespaces/test/delete-file"
-        assert kwargs["json"] == {"fileNames": file_names}
+        assert kwargs["json"] == {"file_names": file_names}
 
 
 @pytest.mark.asyncio
@@ -487,12 +513,12 @@ async def test_delete_files_partial_success_207(client):
         "namespace": "test",
         "results": [
             {
-                "fileName": file_names[0],
+                "file_name": file_names[0],
                 "status": "deleted",
                 "message": "File deletion initiated successfully",
             },
             {
-                "fileName": file_names[1],
+                "file_name": file_names[1],
                 "status": "not_found",
                 "message": "File not found",
             },
@@ -513,7 +539,7 @@ async def test_delete_files_partial_success_207(client):
         args, kwargs = mock_request.call_args
         assert kwargs["method"] == "DELETE"
         assert kwargs["path"] == "/namespaces/test/delete-file"
-        assert kwargs["json"] == {"fileNames": file_names}
+        assert kwargs["json"] == {"file_names": file_names}
 
 
 @pytest.mark.parametrize(

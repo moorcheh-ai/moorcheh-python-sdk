@@ -177,7 +177,7 @@ def run_benchmark(args):
                 f" {args.dimension})"
             )
             try:
-                client.create_namespace(
+                client.namespaces.create(
                     namespace_name=args.namespace,
                     type="vector",
                     vector_dimension=args.dimension,
@@ -213,7 +213,7 @@ def run_benchmark(args):
                     f" ({len(batch_vectors)} vectors)..."
                 )
                 try:
-                    upload_response = client.upload_vectors(
+                    upload_response = client.vectors.upload(
                         namespace_name=args.namespace, vectors=payload["vectors"]
                     )
                     if upload_response.get("status") == "success":
@@ -254,7 +254,7 @@ def run_benchmark(args):
             for i, q_vec in enumerate(query_vectors):
                 print(f"  Running search query {i + 1}/{args.num_queries}...")
                 try:
-                    search_response = client.search(
+                    search_response = client.similarity_search.query(
                         namespaces=[args.namespace], query=q_vec, top_k=args.top_k
                     )
                     exec_time = search_response.get("execution_time")
@@ -343,7 +343,7 @@ def run_benchmark(args):
                 with MoorchehClient(
                     api_key=api_key, base_url=args.base_url
                 ) as cleanup_client:
-                    cleanup_client.delete_namespace(args.namespace)
+                    cleanup_client.namespaces.delete(args.namespace)
                 print("Namespace deleted successfully.")
             except Exception as e:
                 print(

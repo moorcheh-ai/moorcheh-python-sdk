@@ -47,13 +47,13 @@ def main():
         )  # Log full traceback
         sys.exit(1)
 
-    # 2. Call the list_namespaces method
+    # 2. Call client.namespaces.list
     logger.info("Attempting to list namespaces...")
     try:
         # Use the client's context manager for automatic cleanup
         with client:
             # SDK method call will produce its own logs
-            response = client.list_namespaces()  # Call the SDK method
+            response = client.namespaces.list()
 
             logger.info("--- API Response ---")
             # Use json.dumps for pretty printing the response dict in the log
@@ -66,7 +66,7 @@ def main():
                 logger.info(f"Successfully retrieved {num_namespaces} namespace(s). ✅")
                 # Optionally iterate and log names at DEBUG level if needed
                 # for ns in response['namespaces']:
-                #     logger.debug(f" - {ns.get('namespace_name')} (Type: {ns.get('type')}, Items: {ns.get('itemCount')})") # noqa: E501
+                #     logger.debug(f" - {ns.get('namespace_name')} (Type: {ns.get('type')}, Items: {ns.get('item_count')})") # noqa: E501
             else:
                 # Log a warning if the expected key is missing
                 logger.warning(

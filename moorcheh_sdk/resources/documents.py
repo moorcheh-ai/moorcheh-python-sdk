@@ -16,6 +16,7 @@ from ..types import (
     DocumentDeleteResponse,
     DocumentGetResponse,
     DocumentUploadResponse,
+    FetchTextDataResponse,
     FileDeleteResponse,
     FileUploadResponse,
 )
@@ -26,6 +27,20 @@ from ..utils.logging import setup_logging
 from .base import AsyncBaseResource, BaseResource
 
 logger = setup_logging(__name__)
+
+
+def _deletion_processed_count(response: dict) -> int:
+    raw = response.get("actual_deletions")
+    if raw is not None:
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            pass
+    for key in ("deleted_ids", "requested_ids"):
+        ids = response.get(key)
+        if isinstance(ids, list):
+            return len(ids)
+    return 0
 
 
 class Documents(BaseResource):
@@ -197,6 +212,44 @@ class Documents(BaseResource):
         )
         return cast(DocumentGetResponse, response_data)
 
+    @required_args(["namespace_name"], types={"namespace_name": str})
+    def fetch_text_data(self, namespace_name: str) -> FetchTextDataResponse:
+        """
+        Lists stored text and summary chunks for a text namespace (up to 100 per request).
+
+        Use this to export or display stored chunks, or for RAG. Only namespaces with
+        ``type == "text"`` are supported. This differs from :meth:`get`, which retrieves
+        full documents by **ID** via ``POST .../documents/get``.
+
+        Args:
+            namespace_name: The name of the target text-based namespace.
+
+        Returns:
+            A dictionary with ``status``, ``message``, ``namespace``, ``statistics``,
+            ``items`` (list of chunks with ``text``, ``metadata``, ``created_at``,
+            ``is_summary``, etc.), and ``execution_time``. Response keys use snake_case.
+
+        Raises:
+            InvalidInputError: If ``namespace_name`` is invalid.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+        """
+        logger.info(f"Fetching text data from namespace '{namespace_name}'...")
+        endpoint = f"/namespaces/{namespace_name}/documents/fetch-text-data"
+        response_data = self._client._request("GET", endpoint, expected_status=200)
+        if not isinstance(response_data, dict):
+            logger.error("Fetch text data response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from fetch text data endpoint."
+            )
+        item_count = len(response_data.get("items", []))
+        logger.info(
+            f"Fetched {item_count} text item(s) from namespace '{namespace_name}'."
+        )
+        return cast(FetchTextDataResponse, response_data)
+
     @required_args(
         ["namespace_name", "ids"], types={"namespace_name": str, "ids": list}
     )
@@ -250,7 +303,7 @@ class Documents(BaseResource):
                 message="Unexpected response format from delete documents endpoint."
             )
 
-        deleted_count = len(response_data.get("deleted_ids", []))
+        deleted_count = _deletion_processed_count(response_data)
         error_count = len(response_data.get("errors", []))
         logger.info(
             f"Delete documents from '{namespace_name}' completed. Status:"
@@ -290,8 +343,8 @@ class Documents(BaseResource):
                 "success": bool,
                 "message": str,
                 "namespace": str,
-                "fileName": str,
-                "fileSize": int
+                "file_name": str,
+                "file_size": int
             }
 
         Raises:
@@ -398,18 +451,18 @@ class Documents(BaseResource):
             response_data = self._client._request(
                 method="POST",
                 endpoint=endpoint,
-                json_data={"fileName": file_name},
+                json_data={"file_name": file_name},
                 expected_status=200,
             )
 
             if not isinstance(response_data, dict):
                 raise APIError(message="Upload URL response was not a dictionary.")
 
-            upload_url = response_data.get("uploadUrl")
-            content_type = response_data.get("contentType")
+            upload_url = response_data.get("upload_url")
+            content_type = response_data.get("content_type")
             if not upload_url or not content_type:
                 raise APIError(
-                    message="Upload URL response missing 'uploadUrl' or 'contentType'."
+                    message="Upload URL response missing 'upload_url' or 'content_type'."
                 )
 
             # Upload raw bytes to the presigned S3 URL.
@@ -435,8 +488,8 @@ class Documents(BaseResource):
                         "success": True,
                         "message": "File uploaded successfully",
                         "namespace": namespace_name,
-                        "fileName": file_name,
-                        "fileSize": file_size or 0,
+                        "file_name": file_name,
+                        "file_size": file_size or 0,
                     },
                 )
             else:
@@ -517,7 +570,7 @@ class Documents(BaseResource):
                 "namespace": str,
                 "results": [
                     {
-                        "fileName": str,
+                        "file_name": str,
                         "status": str,
                         "message": str
                     }
@@ -555,7 +608,7 @@ class Documents(BaseResource):
         response_data = self._client._request(
             method="DELETE",
             endpoint=endpoint,
-            json_data={"fileNames": file_names},
+            json_data={"file_names": file_names},
             expected_status=200,
             alt_success_status=207,
         )
@@ -743,6 +796,42 @@ class AsyncDocuments(AsyncBaseResource):
         logger.info(f"Successfully retrieved {retrieved_count} document(s).")
         return cast(DocumentGetResponse, response_data)
 
+    @required_args(["namespace_name"], types={"namespace_name": str})
+    async def fetch_text_data(self, namespace_name: str) -> FetchTextDataResponse:
+        """
+        Lists stored text and summary chunks for a text namespace (up to 100 per request).
+
+        Async counterpart of :meth:`Documents.fetch_text_data`.
+
+        Args:
+            namespace_name: The name of the target text-based namespace.
+
+        Returns:
+            Same structure as :meth:`Documents.fetch_text_data` (snake_case keys).
+
+        Raises:
+            InvalidInputError: If ``namespace_name`` is invalid.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+        """
+        logger.info(f"Fetching text data from namespace '{namespace_name}'...")
+        endpoint = f"/namespaces/{namespace_name}/documents/fetch-text-data"
+        response_data = await self._client._request(
+            "GET", endpoint, expected_status=200
+        )
+        if not isinstance(response_data, dict):
+            logger.error("Fetch text data response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from fetch text data endpoint."
+            )
+        item_count = len(response_data.get("items", []))
+        logger.info(
+            f"Fetched {item_count} text item(s) from namespace '{namespace_name}'."
+        )
+        return cast(FetchTextDataResponse, response_data)
+
     @required_args(
         ["namespace_name", "ids"], types={"namespace_name": str, "ids": list}
     )
@@ -796,9 +885,14 @@ class AsyncDocuments(AsyncBaseResource):
                 message="Unexpected response format from delete documents endpoint."
             )
 
+        deleted_count = _deletion_processed_count(response_data)
+        error_count = len(response_data.get("errors", []))
         logger.info(
-            f"Delete operation completed with status: {response_data.get('status')}"
+            f"Delete documents from '{namespace_name}' completed. Status:"
+            f" {response_data.get('status')}, Deleted: {deleted_count}, Errors:"
+            f" {error_count}"
         )
+
         return cast(DocumentDeleteResponse, response_data)
 
     @required_args(["namespace_name"], types={"namespace_name": str})
@@ -828,8 +922,8 @@ class AsyncDocuments(AsyncBaseResource):
                 "success": bool,
                 "message": str,
                 "namespace": str,
-                "fileName": str,
-                "fileSize": int
+                "file_name": str,
+                "file_size": int
             }
 
         Raises:
@@ -936,18 +1030,18 @@ class AsyncDocuments(AsyncBaseResource):
             response_data = await self._client._request(
                 method="POST",
                 endpoint=endpoint,
-                json_data={"fileName": file_name},
+                json_data={"file_name": file_name},
                 expected_status=200,
             )
 
             if not isinstance(response_data, dict):
                 raise APIError(message="Upload URL response was not a dictionary.")
 
-            upload_url = response_data.get("uploadUrl")
-            content_type = response_data.get("contentType")
+            upload_url = response_data.get("upload_url")
+            content_type = response_data.get("content_type")
             if not upload_url or not content_type:
                 raise APIError(
-                    message="Upload URL response missing 'uploadUrl' or 'contentType'."
+                    message="Upload URL response missing 'upload_url' or 'content_type'."
                 )
 
             # Read the file without blocking the async loop.
@@ -975,8 +1069,8 @@ class AsyncDocuments(AsyncBaseResource):
                         "success": True,
                         "message": "File uploaded successfully",
                         "namespace": namespace_name,
-                        "fileName": file_name,
-                        "fileSize": file_size or 0,
+                        "file_name": file_name,
+                        "file_size": file_size or 0,
                     },
                 )
             else:
@@ -1057,7 +1151,7 @@ class AsyncDocuments(AsyncBaseResource):
                 "namespace": str,
                 "results": [
                     {
-                        "fileName": str,
+                        "file_name": str,
                         "status": str,
                         "message": str
                     }
@@ -1095,7 +1189,7 @@ class AsyncDocuments(AsyncBaseResource):
         response_data = await self._client._request(
             method="DELETE",
             endpoint=endpoint,
-            json_data={"fileNames": file_names},
+            json_data={"file_names": file_names},
             expected_status=200,
             alt_success_status=207,
         )

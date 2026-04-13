@@ -56,7 +56,7 @@ class Answer(BaseResource):
             {
                 "answer": str,
                 "model": str,
-                "contextCount": int,
+                "context_count": int,
                 "query": str
             }
 
@@ -119,14 +119,14 @@ class Answer(BaseResource):
         payload: dict[str, Any] = {
             "namespace": namespace,
             "query": query,
-            "aiModel": ai_model,
-            "chatHistory": chat_history if chat_history is not None else [],
+            "ai_model": ai_model,
+            "chat_history": chat_history if chat_history is not None else [],
             "temperature": temperature,
-            "headerPrompt": header_prompt if header_prompt is not None else "",
-            "footerPrompt": footer_prompt if footer_prompt is not None else "",
+            "header_prompt": header_prompt if header_prompt is not None else "",
+            "footer_prompt": footer_prompt if footer_prompt is not None else "",
         }
         if structured_response is not None:
-            payload["structuredResponse"] = structured_response
+            payload["structured_response"] = structured_response
         if namespace:
             payload["type"] = "text"  # Hardcoded as per API design
             payload["top_k"] = top_k if top_k is not None else 5
@@ -266,14 +266,14 @@ class AsyncAnswer(AsyncBaseResource):
         payload: dict[str, Any] = {
             "namespace": namespace,
             "query": query,
-            "aiModel": ai_model,
-            "chatHistory": chat_history if chat_history is not None else [],
+            "ai_model": ai_model,
+            "chat_history": chat_history if chat_history is not None else [],
             "temperature": temperature,
-            "headerPrompt": header_prompt if header_prompt is not None else "",
-            "footerPrompt": footer_prompt if footer_prompt is not None else "",
+            "header_prompt": header_prompt if header_prompt is not None else "",
+            "footer_prompt": footer_prompt if footer_prompt is not None else "",
         }
         if structured_response is not None:
-            payload["structuredResponse"] = structured_response
+            payload["structured_response"] = structured_response
         if namespace:
             payload["type"] = "text"  # Hardcoded as per API design
             payload["top_k"] = top_k if top_k is not None else 5

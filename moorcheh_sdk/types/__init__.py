@@ -10,9 +10,12 @@ from .document import (
     DocumentDeleteResponse,
     DocumentGetResponse,
     DocumentUploadResponse,
+    FetchTextDataResponse,
     FileDeleteResponse,
     FileDeleteResult,
     FileUploadResponse,
+    TextDataItem,
+    TextDataStatistics,
 )
 from .namespace import Namespace, NamespaceCreateResponse, NamespaceListResponse
 from .search import SearchResponse, SearchResult
@@ -40,6 +43,9 @@ __all__ = [
     "DocumentUploadResponse",
     "DocumentDeleteResponse",
     "DocumentGetResponse",
+    "FetchTextDataResponse",
+    "TextDataItem",
+    "TextDataStatistics",
     "FileDeleteResponse",
     "FileDeleteResult",
     "FileUploadResponse",
