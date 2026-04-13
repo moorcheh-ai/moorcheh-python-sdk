@@ -60,7 +60,7 @@ def run_quickstart():
             # --- 1. Create Namespaces ---
             try:
                 logger.info(f"[Step 1a] Creating text namespace: '{text_ns_name}'")
-                creation_response_text = client.create_namespace(
+                creation_response_text = client.namespaces.create(
                     namespace_name=text_ns_name, type="text"
                 )
                 logger.info(
@@ -79,7 +79,7 @@ def run_quickstart():
                     f"[Step 1b] Creating vector namespace: '{vector_ns_name}' (Dim:"
                     f" {vector_dim})"
                 )
-                creation_response_vector = client.create_namespace(
+                creation_response_vector = client.namespaces.create(
                     namespace_name=vector_ns_name,
                     type="vector",
                     vector_dimension=vector_dim,
@@ -97,7 +97,7 @@ def run_quickstart():
             # --- 2. List Namespaces ---
             logger.info("[Step 2] Listing namespaces...")
             try:
-                namespaces_response = client.list_namespaces()
+                namespaces_response = client.namespaces.list()
                 logger.info("Current Namespaces:")
                 logger.info(
                     json.dumps(namespaces_response.get("namespaces", []), indent=2)
@@ -107,6 +107,7 @@ def run_quickstart():
 
             # --- 3. Upload Documents (to text namespace) ---
             logger.info(f"[Step 3] Uploading documents to '{text_ns_name}'...")
+            # Any keys other than id and text are treated as metadata (flat key/value).
             docs_to_upload = [
                 {
                     "id": "qs-doc-1",
@@ -128,13 +129,19 @@ def run_quickstart():
                 },
             ]
             try:
-                upload_doc_res = client.upload_documents(
+                upload_doc_res = client.documents.upload(
                     namespace_name=text_ns_name, documents=docs_to_upload
                 )
                 logger.info(
                     "Upload documents response (queued):"
                     f" {json.dumps(upload_doc_res, indent=2)}"
                 )
+                if not upload_doc_res.get("submitted_ids"):
+                    logger.info(
+                        "Note: submitted_ids can be empty when these document IDs were"
+                        " already ingested (re-runs). Search may still return existing"
+                        " chunks."
+                    )
             except (NamespaceNotFound, InvalidInputError) as e:
                 logger.error(f"Could not upload documents to '{text_ns_name}': {e}")
             except Exception as e:
@@ -152,6 +159,7 @@ def run_quickstart():
                 random_vector = [
                     random.uniform(-1.0, 1.0) for _ in range(vector_dim)
                 ]  # Generate random vector
+                # Any keys other than id and vector are treated as metadata (flat).
                 vectors_to_upload.append(
                     {
                         "id": vec_id,
@@ -162,7 +170,7 @@ def run_quickstart():
                     }
                 )
             try:
-                upload_vec_res = client.upload_vectors(
+                upload_vec_res = client.vectors.upload(
                     namespace_name=vector_ns_name, vectors=vectors_to_upload
                 )
                 logger.info(
@@ -191,7 +199,7 @@ def run_quickstart():
                 " interaction'"
             )
             try:
-                text_search_res = client.search(
+                text_search_res = client.similarity_search.query(
                     namespaces=[text_ns_name],
                     query="API interaction",  # Text query
                     top_k=2,
@@ -214,7 +222,7 @@ def run_quickstart():
             try:
                 # Generate a new random query vector
                 query_vector = [random.uniform(-1.0, 1.0) for _ in range(vector_dim)]
-                vector_search_res = client.search(
+                vector_search_res = client.similarity_search.query(
                     namespaces=[vector_ns_name],
                     query=query_vector,  # Vector query
                     top_k=2,
@@ -238,7 +246,7 @@ def run_quickstart():
                 f" '{text_ns_name}'..."
             )
             try:
-                del_doc_res = client.delete_documents(
+                del_doc_res = client.documents.delete(
                     namespace_name=text_ns_name, ids=[doc_id_to_delete]
                 )
                 logger.info(
@@ -258,7 +266,7 @@ def run_quickstart():
                 f" '{vector_ns_name}'..."
             )
             try:
-                del_vec_res = client.delete_vectors(
+                del_vec_res = client.vectors.delete(
                     namespace_name=vector_ns_name, ids=[vec_id_to_delete]
                 )
                 logger.info(
@@ -275,7 +283,7 @@ def run_quickstart():
             # --- 8. Cleanup: Delete Namespaces (Optional - uncomment to run) ---
             # logger.info(f"[Step 8 - Cleanup] Deleting namespace: {text_ns_name}")
             # try:
-            #     client.delete_namespace(text_ns_name)
+            #     client.namespaces.delete(namespace_name=text_ns_name)
             # except NamespaceNotFound:
             #     logger.warning(f"Namespace '{text_ns_name}' likely already deleted or never created.") # noqa: E501
             # except Exception as e:
@@ -283,7 +291,7 @@ def run_quickstart():
 
             # logger.info(f"[Step 8 - Cleanup] Deleting namespace: {vector_ns_name}")
             # try:
-            #     client.delete_namespace(vector_ns_name)
+            #     client.namespaces.delete(namespace_name=vector_ns_name)
             # except NamespaceNotFound:
             #     logger.warning(f"Namespace '{vector_ns_name}' likely already deleted or never created.") # noqa: E501
             # except Exception as e:

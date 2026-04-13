@@ -16,7 +16,7 @@ def test_get_generative_answer_success(client, mocker, mock_response):
     expected_response = {
         "answer": "Moorcheh is a semantic search engine.",
         "model": model,
-        "contextCount": 3,
+        "context_count": 3,
         "query": query,
     }
     mock_resp = mock_response(200, json_data=expected_response)
@@ -31,11 +31,11 @@ def test_get_generative_answer_success(client, mocker, mock_response):
         "query": query,
         "top_k": 3,
         "type": "text",
-        "aiModel": model,
-        "chatHistory": [],
+        "ai_model": model,
+        "chat_history": [],
         "temperature": 0.7,
-        "headerPrompt": "",
-        "footerPrompt": "",
+        "header_prompt": "",
+        "footer_prompt": "",
         "kiosk_mode": False,
     }
     client._mock_httpx_instance.request.assert_called_once_with(
@@ -53,7 +53,7 @@ def test_generate_answer_with_prompts(client, mocker, mock_response):
     expected_response = {
         "answer": "Moorcheh is great.",
         "model": "claude",
-        "contextCount": 1,
+        "context_count": 1,
         "query": query,
     }
     mock_resp = mock_response(200, json_data=expected_response)
@@ -70,8 +70,8 @@ def test_generate_answer_with_prompts(client, mocker, mock_response):
     call_args = client._mock_httpx_instance.request.call_args
     payload = call_args.kwargs["json"]
 
-    assert payload["headerPrompt"] == header
-    assert payload["footerPrompt"] == footer
+    assert payload["header_prompt"] == header
+    assert payload["footer_prompt"] == footer
 
 
 @pytest.mark.parametrize(
@@ -139,11 +139,11 @@ def test_empty_namespace(client, mocker, mock_response):
     expected_payload = {
         "namespace": "",
         "query": query,
-        "aiModel": "anthropic.claude-sonnet-4-6",
-        "chatHistory": [],
+        "ai_model": "anthropic.claude-sonnet-4-6",
+        "chat_history": [],
         "temperature": 0.7,
-        "headerPrompt": "",
-        "footerPrompt": "",
+        "header_prompt": "",
+        "footer_prompt": "",
     }
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST", url="/answer", json=expected_payload, params=None
@@ -165,15 +165,15 @@ def test_structured_response(client, mocker, mock_response):
     expected_payload = {
         "namespace": "my_ns",
         "query": query,
-        "aiModel": "anthropic.claude-sonnet-4-6",
-        "chatHistory": [],
+        "ai_model": "anthropic.claude-sonnet-4-6",
+        "chat_history": [],
         "temperature": 0.7,
-        "headerPrompt": "",
-        "footerPrompt": "",
+        "header_prompt": "",
+        "footer_prompt": "",
         "type": "text",
         "top_k": 5,
         "kiosk_mode": False,
-        "structuredResponse": structured,
+        "structured_response": structured,
     }
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST", url="/answer", json=expected_payload, params=None
@@ -195,12 +195,12 @@ def test_structured_response_with_empty_namespace(client, mocker, mock_response)
     expected_payload = {
         "namespace": "",
         "query": query,
-        "aiModel": "anthropic.claude-sonnet-4-6",
-        "chatHistory": [],
+        "ai_model": "anthropic.claude-sonnet-4-6",
+        "chat_history": [],
         "temperature": 0.7,
-        "headerPrompt": "",
-        "footerPrompt": "",
-        "structuredResponse": structured,
+        "header_prompt": "",
+        "footer_prompt": "",
+        "structured_response": structured,
     }
     client._mock_httpx_instance.request.assert_called_once_with(
         method="POST", url="/answer", json=expected_payload, params=None

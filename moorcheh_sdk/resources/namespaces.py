@@ -116,7 +116,7 @@ class Namespaces(BaseResource):
                     {
                         "namespace_name": str,
                         "type": "text" | "vector",
-                        "itemCount": int,
+                        "item_count": int,
                         "vector_dimension": int | None
                     }
                 ],

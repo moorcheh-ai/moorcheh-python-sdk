@@ -1,5 +1,5 @@
 import os
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import httpx
 import pytest
@@ -28,11 +28,12 @@ def test_client_initialization_success_with_key(mock_httpx_client):
         httpx.Client.assert_called_once_with(
             base_url="http://test.url",
             headers={
-                "x-api-key": DUMMY_API_KEY,
                 "Accept": "application/json",
+                "x-api-key": DUMMY_API_KEY,
                 "User-Agent": f"moorcheh-python-sdk/{__version__}",
             },
             timeout=30.0,  # Default timeout
+            verify=ANY,
         )
         client_instance.close()  # Explicitly close to avoid resource warnings
 

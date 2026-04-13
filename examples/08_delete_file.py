@@ -74,7 +74,7 @@ def main():
                 for result in response.get("results", []):
                     logger.info(
                         "File '%s' -> %s (%s)",
-                        result.get("fileName"),
+                        result.get("file_name"),
                         result.get("status"),
                         result.get("message"),
                     )

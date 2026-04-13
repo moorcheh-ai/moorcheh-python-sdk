@@ -183,6 +183,53 @@ def test_get_documents_namespace_not_found(client, mocker, mock_response):
     client._mock_httpx_instance.request.assert_called_once()
 
 
+def test_fetch_text_data_success(client, mocker, mock_response):
+    """Test GET fetch-text-data (list chunks for a text namespace)."""
+    expected_response = {
+        "status": "success",
+        "message": "Fetched 1 text items.",
+        "namespace": TEST_NAMESPACE,
+        "statistics": {
+            "total_items": 1,
+            "total_text_chunks": 1,
+            "total_summary_chunks": 0,
+        },
+        "items": [
+            {
+                "id": "chunk-1",
+                "text": "Hello",
+                "metadata": {"source": "a.txt"},
+                "created_at": 1700000000000,
+                "is_summary": False,
+            }
+        ],
+        "execution_time": 0.05,
+    }
+    mock_resp = mock_response(200, json_data=expected_response)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    result = client.documents.fetch_text_data(namespace_name=TEST_NAMESPACE)
+
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="GET",
+        url=f"/namespaces/{TEST_NAMESPACE}/documents/fetch-text-data",
+        json=None,
+        params=None,
+    )
+    assert result == expected_response
+
+
+def test_fetch_text_data_namespace_not_found(client, mocker, mock_response):
+    """Test fetch_text_data when namespace is missing."""
+    error_text = f"Namespace '{TEST_NAMESPACE}' not found."
+    mock_resp = mock_response(404, text_data=error_text)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    with pytest.raises(NamespaceNotFound, match=error_text):
+        client.documents.fetch_text_data(namespace_name=TEST_NAMESPACE)
+    client._mock_httpx_instance.request.assert_called_once()
+
+
 # File Upload Tests
 def test_upload_file_success(client, mocker, mock_response, tmp_path):
     """Test successful file upload."""
@@ -191,16 +238,16 @@ def test_upload_file_success(client, mocker, mock_response, tmp_path):
     test_file.write_bytes(b"PDF content here")
 
     upload_url_data = {
-        "uploadUrl": "https://example.com/upload",
-        "contentType": "application/pdf",
+        "upload_url": "https://example.com/upload",
+        "content_type": "application/pdf",
     }
 
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
         "namespace": TEST_NAMESPACE,
-        "fileName": "test_document.pdf",
-        "fileSize": len(test_file.read_bytes()),
+        "file_name": "test_document.pdf",
+        "file_size": len(test_file.read_bytes()),
     }
     client._mock_httpx_instance.request.side_effect = [
         mock_response(200, json_data=upload_url_data),
@@ -218,7 +265,7 @@ def test_upload_file_success(client, mocker, mock_response, tmp_path):
 
     second_call = client._mock_httpx_instance.request.call_args_list[1]
     assert second_call.kwargs["method"] == "PUT"
-    assert second_call.kwargs["url"] == upload_url_data["uploadUrl"]
+    assert second_call.kwargs["url"] == upload_url_data["upload_url"]
     assert result == expected_response
 
 
@@ -228,16 +275,16 @@ def test_upload_file_with_path_object(client, mocker, mock_response, tmp_path):
     test_file.write_text("Text content")
 
     upload_url_data = {
-        "uploadUrl": "https://example.com/upload",
-        "contentType": "text/plain",
+        "upload_url": "https://example.com/upload",
+        "content_type": "text/plain",
     }
 
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
         "namespace": TEST_NAMESPACE,
-        "fileName": "document.txt",
-        "fileSize": len(test_file.read_bytes()),
+        "file_name": "document.txt",
+        "file_size": len(test_file.read_bytes()),
     }
     client._mock_httpx_instance.request.side_effect = [
         mock_response(200, json_data=upload_url_data),
@@ -258,8 +305,8 @@ def test_upload_file_with_file_like_object(client, mocker, mock_response, tmp_pa
     test_file.write_text('{"key": "value"}')
 
     upload_url_data = {
-        "uploadUrl": "https://example.com/upload",
-        "contentType": "application/json",
+        "upload_url": "https://example.com/upload",
+        "content_type": "application/json",
     }
 
     client._mock_httpx_instance.request.side_effect = [
@@ -273,8 +320,8 @@ def test_upload_file_with_file_like_object(client, mocker, mock_response, tmp_pa
             "success": True,
             "message": "File uploaded successfully",
             "namespace": TEST_NAMESPACE,
-            "fileName": f.name,
-            "fileSize": len(test_file.read_bytes()),
+            "file_name": f.name,
+            "file_size": len(test_file.read_bytes()),
         }
         result = client.documents.upload_file(
             namespace_name=TEST_NAMESPACE, file_path=f
@@ -321,15 +368,15 @@ def test_upload_file_valid_extensions(
     test_file.write_bytes(b"content")
 
     upload_url_data = {
-        "uploadUrl": "https://example.com/upload",
-        "contentType": "application/json",
+        "upload_url": "https://example.com/upload",
+        "content_type": "application/json",
     }
     expected_response = {
         "success": True,
         "message": "File uploaded successfully",
         "namespace": TEST_NAMESPACE,
-        "fileName": f"test{file_extension}",
-        "fileSize": len(test_file.read_bytes()),
+        "file_name": f"test{file_extension}",
+        "file_size": len(test_file.read_bytes()),
     }
     client._mock_httpx_instance.request.side_effect = [
         mock_response(200, json_data=upload_url_data),
@@ -473,12 +520,12 @@ def test_delete_files_success_200(client, mocker, mock_response):
         "namespace": TEST_NAMESPACE,
         "results": [
             {
-                "fileName": file_names[0],
+                "file_name": file_names[0],
                 "status": "deleted",
                 "message": "File deletion initiated successfully",
             },
             {
-                "fileName": file_names[1],
+                "file_name": file_names[1],
                 "status": "deleted",
                 "message": "File deletion initiated successfully",
             },
@@ -494,7 +541,7 @@ def test_delete_files_success_200(client, mocker, mock_response):
     client._mock_httpx_instance.request.assert_called_once_with(
         method="DELETE",
         url=f"/namespaces/{TEST_NAMESPACE}/delete-file",
-        json={"fileNames": file_names},
+        json={"file_names": file_names},
         params=None,
     )
     assert result == expected_response
@@ -509,12 +556,12 @@ def test_delete_files_partial_success_207(client, mocker, mock_response):
         "namespace": TEST_NAMESPACE,
         "results": [
             {
-                "fileName": file_names[0],
+                "file_name": file_names[0],
                 "status": "deleted",
                 "message": "File deletion initiated successfully",
             },
             {
-                "fileName": file_names[1],
+                "file_name": file_names[1],
                 "status": "not_found",
                 "message": "File not found",
             },
@@ -530,7 +577,7 @@ def test_delete_files_partial_success_207(client, mocker, mock_response):
     client._mock_httpx_instance.request.assert_called_once_with(
         method="DELETE",
         url=f"/namespaces/{TEST_NAMESPACE}/delete-file",
-        json={"fileNames": file_names},
+        json={"file_names": file_names},
         params=None,
     )
     assert result == expected_response

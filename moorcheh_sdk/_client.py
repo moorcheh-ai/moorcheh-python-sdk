@@ -5,7 +5,6 @@ from typing import Any, cast
 import httpx
 
 from ._base_client import AsyncAPIClient, SyncAPIClient
-from ._legacy_client import LegacyClientMixin
 from .exceptions import (
     APIError,
     AuthenticationError,
@@ -27,13 +26,14 @@ from .resources import (
     Vectors,
 )
 from .types import Body, Query, Timeout
+from .utils.casing import transform_keys_to_snake_case
 from .utils.constants import DEFAULT_BASE_URL
 from .utils.logging import setup_logging
 
 logger = setup_logging(__name__)
 
 
-class MoorchehClient(SyncAPIClient, LegacyClientMixin):
+class MoorchehClient(SyncAPIClient):
     """
     Moorcheh Python SDK client for interacting with the Moorcheh Semantic Search API v1.
 
@@ -148,11 +148,15 @@ class MoorchehClient(SyncAPIClient, LegacyClientMixin):
             endpoint = "/" + endpoint
 
         try:
+            normalized_json_data = cast(
+                Body | None, transform_keys_to_snake_case(json_data)
+            )
+            normalized_params = cast(Query | None, transform_keys_to_snake_case(params))
             response = self.request(
                 method=method,
                 path=endpoint,
-                json=json_data,
-                params=params,
+                json=normalized_json_data,
+                params=normalized_params,
             )
             logger.debug(f"Received response with status code: {response.status_code}")
 
@@ -174,9 +178,16 @@ class MoorchehClient(SyncAPIClient, LegacyClientMixin):
             )
             raise MoorchehError(f"Network or request error: {req_e}") from req_e
         except MoorchehError as sdk_err:
-            logger.error(
-                f"SDK Error during request to {endpoint}: {sdk_err}", exc_info=True
-            )
+            if isinstance(sdk_err, ConflictError):
+                logger.warning(
+                    "Request to %s returned conflict (caller may handle): %s",
+                    endpoint,
+                    sdk_err,
+                )
+            else:
+                logger.error(
+                    f"SDK Error during request to {endpoint}: {sdk_err}", exc_info=True
+                )
             raise
         except Exception as e:
             logger.error(
@@ -220,7 +231,7 @@ class MoorchehClient(SyncAPIClient, LegacyClientMixin):
                 if not response.content:
                     logger.debug("Response content is empty, returning empty dict.")
                     return {}
-                json_response = response.json()
+                json_response = transform_keys_to_snake_case(response.json())
                 logger.debug(f"Decoded JSON response: {json_response}")
                 return cast(dict[str, Any], json_response)
             except Exception as json_e:
@@ -240,11 +251,16 @@ class MoorchehClient(SyncAPIClient, LegacyClientMixin):
         return None  # Should not be reached
 
     def _handle_error_response(self, response: httpx.Response, endpoint: str) -> None:
-        # Log error responses before raising exceptions
-        logger.warning(
-            f"Request to {endpoint} failed with status {response.status_code}."
-            f" Response text: {response.text}"
-        )
+        # Log error responses before raising exceptions (409 logged in _request when re-raised)
+        if response.status_code != 409:
+            logger.warning(
+                f"Request to {endpoint} failed with status {response.status_code}."
+                f" Response text: {response.text}"
+            )
+        else:
+            logger.debug(
+                "Request to %s conflict response body: %s", endpoint, response.text
+            )
 
         if response.status_code == 400:
             raise InvalidInputError(message=f"Bad Request: {response.text}")
@@ -382,11 +398,15 @@ class AsyncMoorchehClient(AsyncAPIClient):
             endpoint = "/" + endpoint
 
         try:
+            normalized_json_data = cast(
+                Body | None, transform_keys_to_snake_case(json_data)
+            )
+            normalized_params = cast(Query | None, transform_keys_to_snake_case(params))
             response = await self.request(
                 method=method,
                 path=endpoint,
-                json=json_data,
-                params=params,
+                json=normalized_json_data,
+                params=normalized_params,
             )
             logger.debug(f"Received response with status code: {response.status_code}")
 
@@ -408,9 +428,16 @@ class AsyncMoorchehClient(AsyncAPIClient):
             )
             raise MoorchehError(f"Network or request error: {req_e}") from req_e
         except MoorchehError as sdk_err:
-            logger.error(
-                f"SDK Error during request to {endpoint}: {sdk_err}", exc_info=True
-            )
+            if isinstance(sdk_err, ConflictError):
+                logger.warning(
+                    "Request to %s returned conflict (caller may handle): %s",
+                    endpoint,
+                    sdk_err,
+                )
+            else:
+                logger.error(
+                    f"SDK Error during request to {endpoint}: {sdk_err}", exc_info=True
+                )
             raise
         except Exception as e:
             logger.error(
@@ -454,7 +481,7 @@ class AsyncMoorchehClient(AsyncAPIClient):
                 if not response.content:
                     logger.debug("Response content is empty, returning empty dict.")
                     return {}
-                json_response = response.json()
+                json_response = transform_keys_to_snake_case(response.json())
                 logger.debug(f"Decoded JSON response: {json_response}")
                 return cast(dict[str, Any], json_response)
             except Exception as json_e:
@@ -474,11 +501,16 @@ class AsyncMoorchehClient(AsyncAPIClient):
         return None  # Should not be reached
 
     def _handle_error_response(self, response: httpx.Response, endpoint: str) -> None:
-        # Log error responses before raising exceptions
-        logger.warning(
-            f"Request to {endpoint} failed with status {response.status_code}."
-            f" Response text: {response.text}"
-        )
+        # Log error responses before raising exceptions (409 logged in _request when re-raised)
+        if response.status_code != 409:
+            logger.warning(
+                f"Request to {endpoint} failed with status {response.status_code}."
+                f" Response text: {response.text}"
+            )
+        else:
+            logger.debug(
+                "Request to %s conflict response body: %s", endpoint, response.text
+            )
 
         if response.status_code == 400:
             raise InvalidInputError(message=f"Bad Request: {response.text}")

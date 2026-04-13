@@ -84,8 +84,8 @@ def main():
 
             if response.get("success"):
                 logger.info("✅ File uploaded successfully!")
-                logger.info(f"   File: {response.get('fileName')}")
-                logger.info(f"   Size: {response.get('fileSize')} bytes")
+                logger.info(f"   File: {response.get('file_name')}")
+                logger.info(f"   Size: {response.get('file_size')} bytes")
                 logger.info(f"   Namespace: {response.get('namespace')}")
             else:
                 logger.warning(

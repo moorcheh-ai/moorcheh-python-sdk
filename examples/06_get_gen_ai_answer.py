@@ -61,12 +61,12 @@ def main():
     logger.info(f"  Query: '{query}'")
     logger.info(f"  Context (top_k): {top_k_context}")
 
-    # 3. Call the get_generative_answer method
+    # 3. Call client.answer.generate
     try:
         # Use the client's context manager
         with client:
             # SDK method call will produce its own logs
-            response = client.get_generative_answer(
+            response = client.answer.generate(
                 namespace=target_namespace, query=query, top_k=top_k_context
             )
             logger.info("--- API Response (Generative Answer) ---")

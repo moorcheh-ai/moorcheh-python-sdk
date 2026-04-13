@@ -62,12 +62,12 @@ def main():
     if score_threshold is not None:
         logger.info(f"  Threshold: {score_threshold}")
 
-    # 3. Call the search method
+    # 3. Call client.similarity_search.query
     try:
         # Use the client's context manager
         with client:
             # SDK method call will produce its own logs
-            response = client.search(
+            response = client.similarity_search.query(
                 namespaces=[target_namespace],  # Pass namespace(s) as a list
                 query=search_query,  # Pass the text query string
                 top_k=top_k_results,

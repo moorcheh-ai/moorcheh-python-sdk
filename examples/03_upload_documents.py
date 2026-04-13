@@ -51,6 +51,7 @@ def main():
     # 2. Define Target Namespace and Documents to Upload
     target_namespace = "sdk-test-text-ns-01"  # Use the text namespace created earlier
 
+    # Any keys other than id and text are treated as metadata (flat key/value).
     documents_to_upload = [
         {
             "id": "sdk-doc-001",  # Unique ID for this chunk
@@ -80,12 +81,12 @@ def main():
         f" '{target_namespace}'"
     )
 
-    # 3. Call the upload_documents method
+    # 3. Call client.documents.upload
     try:
         # Use the client's context manager
         with client:
             # SDK method call will produce its own logs
-            response = client.upload_documents(
+            response = client.documents.upload(
                 namespace_name=target_namespace, documents=documents_to_upload
             )
             logger.info("--- API Response (Should be 202 Accepted) ---")

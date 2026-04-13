@@ -140,11 +140,11 @@ def test_list_namespaces_success(client, mocker, mock_response):
     """Test successfully listing namespaces."""
     expected_response = {
         "namespaces": [
-            {"namespace_name": "ns1", "type": "text", "itemCount": 100},
+            {"namespace_name": "ns1", "type": "text", "item_count": 100},
             {
                 "namespace_name": "ns2",
                 "type": "vector",
-                "itemCount": 500,
+                "item_count": 500,
                 "vector_dimension": 128,
             },
         ],

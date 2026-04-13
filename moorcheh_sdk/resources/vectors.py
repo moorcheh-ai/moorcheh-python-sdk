@@ -10,6 +10,20 @@ from .base import AsyncBaseResource, BaseResource
 logger = setup_logging(__name__)
 
 
+def _deletion_processed_count(response: dict) -> int:
+    raw = response.get("actual_deletions")
+    if raw is not None:
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            pass
+    for key in ("deleted_ids", "requested_ids"):
+        ids = response.get(key)
+        if isinstance(ids, list):
+            return len(ids)
+    return 0
+
+
 class Vectors(BaseResource):
     @required_args(
         ["namespace_name", "vectors"], types={"namespace_name": str, "vectors": list}
@@ -162,7 +176,7 @@ class Vectors(BaseResource):
             logger.error("Delete vectors response was not a dictionary.")
             raise APIError(message="Unexpected response format after deleting vectors.")
 
-        deleted_count = len(response_data.get("deleted_ids", []))
+        deleted_count = _deletion_processed_count(response_data)
         error_count = len(response_data.get("errors", []))
         logger.info(
             f"Delete vectors from '{namespace_name}' completed. Status:"
@@ -340,7 +354,7 @@ class AsyncVectors(AsyncBaseResource):
                 message="Unexpected response format from delete vectors endpoint."
             )
 
-        deleted_count = len(response_data.get("deleted_ids", []))
+        deleted_count = _deletion_processed_count(response_data)
         error_count = len(response_data.get("errors", []))
 
         logger.info(

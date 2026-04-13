@@ -61,12 +61,12 @@ def main():
         f" '{target_namespace}'"
     )
 
-    # 3. Call the delete_documents method
+    # 3. Call client.documents.delete
     #    Note: The method expects a LIST of IDs, even if deleting only one.
     try:
         with client:
             # SDK method call will produce its own logs
-            response = client.delete_documents(
+            response = client.documents.delete(
                 namespace_name=target_namespace,
                 ids=[document_id_to_delete],  # Pass the ID inside a list
             )
@@ -76,8 +76,11 @@ def main():
             logger.info("-----------------------------------------------------------")
 
             if response and response.get("status") == "success":
-                # Check if the specific ID is in the returned list (optional validation)
-                if document_id_to_delete in response.get("deleted_ids", []):
+                # API may return deleted_ids and/or requested_ids
+                ids_reported = (
+                    response.get("deleted_ids") or response.get("requested_ids") or []
+                )
+                if document_id_to_delete in ids_reported:
                     logger.info(
                         "Successfully processed deletion request for document ID"
                         f" '{document_id_to_delete}'. ✅"

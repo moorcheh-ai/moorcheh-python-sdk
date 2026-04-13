@@ -9,7 +9,7 @@ class ChatHistoryItem(TypedDict):
 class AnswerResponse(TypedDict):
     answer: str
     model: str
-    contextCount: int
+    context_count: int
     query: str
-    usedContext: bool | None
-    structuredData: dict | None
+    used_context: bool | None
+    structured_data: dict | None
