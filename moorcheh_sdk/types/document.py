@@ -71,3 +71,20 @@ class FileDeleteResponse(TypedDict):
     message: str
     namespace: str
     results: list[FileDeleteResult]
+
+
+class FileListItem(TypedDict):
+    """One object from ``GET .../list-files`` (raw storage listing)."""
+
+    file_name: str
+    size: int
+    last_modified: str
+
+
+class ListFilesResponse(TypedDict):
+    """Response from ``GET .../namespaces/{namespace}/list-files``."""
+
+    success: bool
+    namespace: str
+    file_count: int
+    files: list[FileListItem]
