@@ -19,6 +19,7 @@ from ..types import (
     FetchTextDataResponse,
     FileDeleteResponse,
     FileUploadResponse,
+    ListFilesResponse,
 )
 from ..utils.batching import chunk_iterable
 from ..utils.constants import INVALID_ID_CHARS
@@ -543,6 +544,57 @@ class Documents(BaseResource):
         finally:
             if should_close and hasattr(file_obj, "close"):
                 file_obj.close()
+
+    @required_args(["namespace_name"], types={"namespace_name": str})
+    def list_files(self, namespace_name: str) -> ListFilesResponse:
+        """
+        Lists raw file objects in document storage for a namespace.
+
+        This returns objects uploaded via the pre-signed upload flow (for example
+        ``upload_file``). It is distinct from ``get``, which returns indexed text
+        documents by ID from the text pipeline.
+
+        Args:
+            namespace_name: The name of the target namespace.
+
+        Returns:
+            A dictionary with ``success``, ``namespace``, ``file_count``, and
+            ``files`` (each file has ``file_name``, ``size``, ``last_modified``).
+
+        Raises:
+            InvalidInputError: If the API returns 400.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+
+        Example:
+            >>> client = MoorchehClient()
+            >>> response = client.documents.list_files(namespace_name="my-docs")
+            >>> print(response["file_count"], response["files"])
+        """
+        logger.info(f"Listing files in namespace '{namespace_name}'...")
+
+        endpoint = f"/namespaces/{namespace_name}/list-files"
+
+        response_data = self._client._request(
+            method="GET",
+            endpoint=endpoint,
+            json_data=None,
+            expected_status=200,
+        )
+
+        if not isinstance(response_data, dict):
+            logger.error("List files response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from list files endpoint."
+            )
+
+        logger.info(
+            f"List files for '{namespace_name}' completed. Count:"
+            f" {response_data.get('file_count', 'unknown')}"
+        )
+        return cast(ListFilesResponse, response_data)
 
     @required_args(
         ["namespace_name", "file_names"],
@@ -1124,6 +1176,57 @@ class AsyncDocuments(AsyncBaseResource):
         finally:
             if should_close and hasattr(file_obj, "close"):
                 file_obj.close()
+
+    @required_args(["namespace_name"], types={"namespace_name": str})
+    async def list_files(self, namespace_name: str) -> ListFilesResponse:
+        """
+        Lists raw file objects in document storage for a namespace (async).
+
+        This returns objects uploaded via the pre-signed upload flow (for example
+        ``upload_file``). It is distinct from ``get``, which returns indexed text
+        documents by ID from the text pipeline.
+
+        Args:
+            namespace_name: The name of the target namespace.
+
+        Returns:
+            A dictionary with ``success``, ``namespace``, ``file_count``, and
+            ``files`` (each file has ``file_name``, ``size``, ``last_modified``).
+
+        Raises:
+            InvalidInputError: If the API returns 400.
+            NamespaceNotFound: If the namespace does not exist (404).
+            AuthenticationError: If authentication fails (401/403).
+            APIError: For other API errors.
+            MoorchehError: For network issues.
+
+        Example:
+            >>> client = AsyncMoorchehClient()
+            >>> response = await client.documents.list_files(namespace_name="my-docs")
+            >>> print(response["file_count"])
+        """
+        logger.info(f"Listing files in namespace '{namespace_name}'...")
+
+        endpoint = f"/namespaces/{namespace_name}/list-files"
+
+        response_data = await self._client._request(
+            method="GET",
+            endpoint=endpoint,
+            json_data=None,
+            expected_status=200,
+        )
+
+        if not isinstance(response_data, dict):
+            logger.error("List files response was not a dictionary.")
+            raise APIError(
+                message="Unexpected response format from list files endpoint."
+            )
+
+        logger.info(
+            f"List files for '{namespace_name}' completed. Count:"
+            f" {response_data.get('file_count', 'unknown')}"
+        )
+        return cast(ListFilesResponse, response_data)
 
     @required_args(
         ["namespace_name", "file_names"],

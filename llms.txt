@@ -423,6 +423,10 @@ Moorcheh Python SDK. Use this file as guidance for LLMs and tooling when reading
 		curl -X PUT "<uploadUrl>" \
 			-H "Content-Type: application/pdf" \
 			--data-binary "@/path/to/document.pdf"
+- GET /namespaces/{namespace_name}/list-files (list raw file objects in storage)
+	- Lists file_name, size (bytes), last_modified for each object under the namespace prefix.
+	- No query parameters or body.
+	- Common responses: 200, 400, 401, 404, 429.
 - DELETE /namespaces/{namespace_name}/delete-file (delete file(s))
 	- At least one of: body fileName, body fileNames, or query fileName.
 	- Body:
@@ -650,7 +654,7 @@ Moorcheh Python SDK. Use this file as guidance for LLMs and tooling when reading
 - documents.delete(namespace_name, ids)
 	- Deletes by ID (max 1000).
 	- Raises NamespaceNotFound, InvalidInputError.
-- File uploads: use the REST upload-url and delete-file endpoints with the pre-signed S3 flow.
+- File uploads: use the REST upload-url and delete-file endpoints with the pre-signed S3 flow; use GET list-files to list raw objects in storage.
 
 ### Vectors
 - vectors.upload(namespace_name, vectors)

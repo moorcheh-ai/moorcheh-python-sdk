@@ -511,6 +511,50 @@ def test_upload_file_invalid_input_error(client, mocker, mock_response, tmp_path
     )
 
 
+def test_list_files_success(client, mocker, mock_response):
+    """Test GET list-files (raw objects in document storage)."""
+    expected_response = {
+        "success": True,
+        "namespace": TEST_NAMESPACE,
+        "file_count": 2,
+        "files": [
+            {
+                "file_name": "report.pdf",
+                "size": 245678,
+                "last_modified": "2026-05-10T14:22:11.000Z",
+            },
+            {
+                "file_name": "notes.txt",
+                "size": 1204,
+                "last_modified": "2026-05-09T09:01:00.000Z",
+            },
+        ],
+    }
+    mock_resp = mock_response(200, json_data=expected_response)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    result = client.documents.list_files(namespace_name=TEST_NAMESPACE)
+
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="GET",
+        url=f"/namespaces/{TEST_NAMESPACE}/list-files",
+        json=None,
+        params=None,
+    )
+    assert result == expected_response
+
+
+def test_list_files_namespace_not_found(client, mocker, mock_response):
+    """Test list_files when namespace is missing."""
+    error_text = f"Namespace '{TEST_NAMESPACE}' not found."
+    mock_resp = mock_response(404, text_data=error_text)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    with pytest.raises(NamespaceNotFound, match=error_text):
+        client.documents.list_files(namespace_name=TEST_NAMESPACE)
+    client._mock_httpx_instance.request.assert_called_once()
+
+
 def test_delete_files_success_200(client, mocker, mock_response):
     """Test successful deletion of files."""
     file_names = ["document.pdf", "report.docx"]

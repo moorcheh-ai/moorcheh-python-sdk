@@ -465,6 +465,55 @@ async def test_upload_file_api_error(client, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_list_files_success(client):
+    """Test successful async list_files."""
+    expected_response = {
+        "success": True,
+        "namespace": "test",
+        "file_count": 1,
+        "files": [
+            {
+                "file_name": "report.pdf",
+                "size": 100,
+                "last_modified": "2026-05-10T14:22:11.000Z",
+            }
+        ],
+    }
+
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = MagicMock(
+            status_code=200, json=lambda: expected_response
+        )
+
+        response = await client.documents.list_files(namespace_name="test")
+
+        assert response == expected_response
+        mock_request.assert_called_once()
+        kwargs = mock_request.call_args.kwargs
+        assert kwargs["method"] == "GET"
+        assert kwargs["path"] == "/namespaces/test/list-files"
+        assert kwargs["json"] is None
+
+
+@pytest.mark.asyncio
+async def test_list_files_namespace_not_found(client):
+    """Test async list_files against a non-existent namespace."""
+    error_text = "Namespace 'test' not found."
+
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_response_obj = MagicMock()
+        mock_response_obj.status_code = 404
+        mock_response_obj.text = error_text
+        mock_response_obj.json.side_effect = Exception("Cannot decode JSON")
+        mock_request.return_value = mock_response_obj
+
+        with pytest.raises(NamespaceNotFound, match=error_text):
+            await client.documents.list_files(namespace_name="test")
+        mock_request.assert_called_once()
+        assert mock_request.call_args.kwargs["path"] == "/namespaces/test/list-files"
+
+
+@pytest.mark.asyncio
 async def test_delete_files_success(client):
     """Test successful async deletion of files."""
     file_names = ["document.pdf", "report.docx"]

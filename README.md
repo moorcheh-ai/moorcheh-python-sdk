@@ -111,6 +111,7 @@ The `MoorchehClient` and `AsyncMoorchehClient` classes provide the same method s
 | `documents.upload`        | namespace_name, documents              | Upload text documents to a text namespace.         |
 | `documents.get`           | namespace_name, ids                    | Retrieve documents by ID.                          |
 | `documents.upload_file`   | namespace_name, file_path              | Upload a file for server-side ingestion.           |
+| `documents.list_files`    | namespace_name                         | List raw files in storage for a namespace.         |
 | `documents.delete`        | namespace_name, ids                    | Delete documents by ID.                            |
 | `documents.delete_files`  | namespace_name, file_names             | Delete uploaded files by filename.                 |
 | `vectors.upload`          | namespace_name, vectors=[{id, vector}] | Upload vectors to a vector namespace.              |
