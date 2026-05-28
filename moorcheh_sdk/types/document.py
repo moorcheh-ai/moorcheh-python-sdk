@@ -28,7 +28,7 @@ class TextDataItem(TypedDict, total=False):
     id: str
     text: str
     metadata: dict[str, Any] | None
-    created_at: int
+    created_at: str | None
     is_summary: bool
 
 
@@ -36,9 +36,17 @@ class TextDataStatistics(TypedDict, total=False):
     total_items: int
     total_text_chunks: int
     total_summary_chunks: int
-    created_at_min: int
-    created_at_max: int
+    created_at_min: str | None
+    created_at_max: str | None
     source_counts: dict[str, int]
+
+
+class TextDataPagination(TypedDict, total=False):
+    """Cursor pagination metadata from ``Documents.fetch_text_data``."""
+
+    limit: int
+    has_more: bool
+    next_token: str | None
 
 
 class FetchTextDataResponse(TypedDict, total=False):
@@ -49,6 +57,7 @@ class FetchTextDataResponse(TypedDict, total=False):
     namespace: str
     statistics: TextDataStatistics
     items: list[TextDataItem]
+    pagination: TextDataPagination
     execution_time: float
 
 

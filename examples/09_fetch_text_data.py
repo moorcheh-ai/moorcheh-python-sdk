@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 
 def main():
     """
-    Example: list stored text and summary chunks for a text namespace (GET
-    fetch-text-data). Up to 100 items per response. For retrieving full
-    documents by ID, use client.documents.get instead.
+    Example: list stored text and summary chunks with cursor pagination (GET
+    fetch-text-data). Up to 100 items per page. For retrieving full documents
+    by ID, use client.documents.get instead.
     """
     logger.info("--- Moorcheh SDK: Fetch Text Data Example ---")
 
@@ -50,26 +50,44 @@ def main():
 
     try:
         with client:
-            logger.info(f"Fetching text chunks from namespace '{target_namespace}'...")
-            response = client.documents.fetch_text_data(
-                namespace_name=target_namespace,
-            )
+            all_items = []
+            next_token = None
+            page = 0
 
-            logger.info("--- API Response (200 OK) ---")
-            logger.info(json.dumps(response, indent=2))
-            logger.info("-------------------------------")
+            while True:
+                page += 1
+                logger.info(
+                    f"Fetching page {page} from namespace '{target_namespace}'..."
+                )
+                response = client.documents.fetch_text_data(
+                    namespace_name=target_namespace,
+                    limit=100,
+                    next_token=next_token,
+                )
 
-            if response.get("status") == "success":
                 items = response.get("items") or []
+                all_items.extend(items)
+                pagination = response.get("pagination") or {}
+                has_more = pagination.get("has_more", False)
+                next_token = pagination.get("next_token") if has_more else None
+
                 stats = response.get("statistics") or {}
                 logger.info(
-                    f"✅ Fetched {len(items)} item(s). "
-                    f"statistics.total_items={stats.get('total_items')}"
+                    f"Page {page}: {len(items)} item(s) on this page "
+                    f"(statistics.total_items={stats.get('total_items')}, "
+                    f"has_more={has_more})"
                 )
-            else:
-                logger.warning(
-                    f"Unexpected status in response: {response.get('status')!r}"
-                )
+
+                if not has_more or not next_token:
+                    break
+
+            logger.info("--- Summary ---")
+            logger.info(
+                f"Total items collected across {page} page(s): {len(all_items)}"
+            )
+            if all_items:
+                logger.info("First item (truncated):")
+                logger.info(json.dumps(all_items[0], indent=2)[:500])
 
     except NamespaceNotFound:
         logger.error(f"Namespace '{target_namespace}' was not found.")

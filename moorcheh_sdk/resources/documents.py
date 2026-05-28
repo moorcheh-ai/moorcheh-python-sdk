@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import BinaryIO, cast
+from typing import Any, BinaryIO, cast
 
 import httpx
 
@@ -28,6 +28,22 @@ from ..utils.logging import setup_logging
 from .base import AsyncBaseResource, BaseResource
 
 logger = setup_logging(__name__)
+
+
+def _fetch_text_data_params(
+    limit: int | None = None,
+    next_token: str | None = None,
+) -> dict[str, Any] | None:
+    params: dict[str, Any] = {}
+    if limit is not None:
+        if not isinstance(limit, int) or limit < 1 or limit > 100:
+            raise InvalidInputError(
+                "Argument 'limit' must be a positive integer between 1 and 100."
+            )
+        params["limit"] = limit
+    if next_token is not None:
+        params["next_token"] = next_token
+    return params or None
 
 
 def _deletion_processed_count(response: dict) -> int:
@@ -214,40 +230,58 @@ class Documents(BaseResource):
         return cast(DocumentGetResponse, response_data)
 
     @required_args(["namespace_name"], types={"namespace_name": str})
-    def fetch_text_data(self, namespace_name: str) -> FetchTextDataResponse:
+    def fetch_text_data(
+        self,
+        namespace_name: str,
+        *,
+        limit: int | None = None,
+        next_token: str | None = None,
+    ) -> FetchTextDataResponse:
         """
-        Lists stored text and summary chunks for a text namespace (up to 100 per request).
+        Lists stored text and summary chunks for a text namespace (cursor pagination).
 
         Use this to export or display stored chunks, or for RAG. Only namespaces with
         ``type == "text"`` are supported. This differs from :meth:`get`, which retrieves
         full documents by **ID** via ``POST .../documents/get``.
 
+        Each page returns up to 100 items. When ``pagination.has_more`` is ``True``,
+        pass ``pagination.next_token`` as ``next_token`` on the next call.
+
         Args:
             namespace_name: The name of the target text-based namespace.
+            limit: Maximum items per page (1–100). Omit for the API default (100).
+            next_token: Cursor from a previous response's ``pagination.next_token``.
+                Omit on the first request.
 
         Returns:
-            A dictionary with ``status``, ``message``, ``namespace``, ``statistics``,
-            ``items`` (list of chunks with ``text``, ``metadata``, ``created_at``,
-            ``is_summary``, etc.), and ``execution_time``. Response keys use snake_case.
+            A dictionary with ``status``, ``message``, ``namespace``, ``statistics``
+            (for this page only), ``items``, ``pagination`` (``limit``, ``has_more``,
+            ``next_token``), and ``execution_time``. Response keys use snake_case.
 
         Raises:
-            InvalidInputError: If ``namespace_name`` is invalid.
+            InvalidInputError: If ``namespace_name``, ``limit``, or ``next_token`` is invalid.
             NamespaceNotFound: If the namespace does not exist (404).
             AuthenticationError: If authentication fails (401/403).
             APIError: For other API errors.
             MoorchehError: For network issues.
         """
+        params = _fetch_text_data_params(limit=limit, next_token=next_token)
         logger.info(f"Fetching text data from namespace '{namespace_name}'...")
         endpoint = f"/namespaces/{namespace_name}/documents/fetch-text-data"
-        response_data = self._client._request("GET", endpoint, expected_status=200)
+        response_data = self._client._request(
+            "GET", endpoint, params=params, expected_status=200
+        )
         if not isinstance(response_data, dict):
             logger.error("Fetch text data response was not a dictionary.")
             raise APIError(
                 message="Unexpected response format from fetch text data endpoint."
             )
         item_count = len(response_data.get("items", []))
+        pagination = response_data.get("pagination") or {}
+        has_more = pagination.get("has_more", False)
         logger.info(
-            f"Fetched {item_count} text item(s) from namespace '{namespace_name}'."
+            f"Fetched {item_count} text item(s) from namespace '{namespace_name}'"
+            f" (has_more={has_more})."
         )
         return cast(FetchTextDataResponse, response_data)
 
@@ -849,29 +883,38 @@ class AsyncDocuments(AsyncBaseResource):
         return cast(DocumentGetResponse, response_data)
 
     @required_args(["namespace_name"], types={"namespace_name": str})
-    async def fetch_text_data(self, namespace_name: str) -> FetchTextDataResponse:
+    async def fetch_text_data(
+        self,
+        namespace_name: str,
+        *,
+        limit: int | None = None,
+        next_token: str | None = None,
+    ) -> FetchTextDataResponse:
         """
-        Lists stored text and summary chunks for a text namespace (up to 100 per request).
+        Lists stored text and summary chunks for a text namespace (cursor pagination).
 
         Async counterpart of :meth:`Documents.fetch_text_data`.
 
         Args:
             namespace_name: The name of the target text-based namespace.
+            limit: Maximum items per page (1–100). Omit for the API default (100).
+            next_token: Cursor from a previous response's ``pagination.next_token``.
 
         Returns:
             Same structure as :meth:`Documents.fetch_text_data` (snake_case keys).
 
         Raises:
-            InvalidInputError: If ``namespace_name`` is invalid.
+            InvalidInputError: If ``namespace_name``, ``limit``, or ``next_token`` is invalid.
             NamespaceNotFound: If the namespace does not exist (404).
             AuthenticationError: If authentication fails (401/403).
             APIError: For other API errors.
             MoorchehError: For network issues.
         """
+        params = _fetch_text_data_params(limit=limit, next_token=next_token)
         logger.info(f"Fetching text data from namespace '{namespace_name}'...")
         endpoint = f"/namespaces/{namespace_name}/documents/fetch-text-data"
         response_data = await self._client._request(
-            "GET", endpoint, expected_status=200
+            "GET", endpoint, params=params, expected_status=200
         )
         if not isinstance(response_data, dict):
             logger.error("Fetch text data response was not a dictionary.")
@@ -879,8 +922,11 @@ class AsyncDocuments(AsyncBaseResource):
                 message="Unexpected response format from fetch text data endpoint."
             )
         item_count = len(response_data.get("items", []))
+        pagination = response_data.get("pagination") or {}
+        has_more = pagination.get("has_more", False)
         logger.info(
-            f"Fetched {item_count} text item(s) from namespace '{namespace_name}'."
+            f"Fetched {item_count} text item(s) from namespace '{namespace_name}'"
+            f" (has_more={has_more})."
         )
         return cast(FetchTextDataResponse, response_data)
 
