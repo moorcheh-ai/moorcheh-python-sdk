@@ -199,10 +199,15 @@ def test_fetch_text_data_success(client, mocker, mock_response):
                 "id": "chunk-1",
                 "text": "Hello",
                 "metadata": {"source": "a.txt"},
-                "created_at": 1700000000000,
+                "created_at": "2025-12-19T18:18:57.700Z",
                 "is_summary": False,
             }
         ],
+        "pagination": {
+            "limit": 100,
+            "has_more": False,
+            "next_token": None,
+        },
         "execution_time": 0.05,
     }
     mock_resp = mock_response(200, json_data=expected_response)
@@ -217,6 +222,50 @@ def test_fetch_text_data_success(client, mocker, mock_response):
         params=None,
     )
     assert result == expected_response
+
+
+def test_fetch_text_data_with_pagination_params(client, mocker, mock_response):
+    """Test fetch-text-data passes limit and next_token query params."""
+    expected_response = {
+        "status": "success",
+        "message": "Fetched 1 text items.",
+        "namespace": TEST_NAMESPACE,
+        "statistics": {"total_items": 1},
+        "items": [{"id": "chunk-2", "text": "World", "is_summary": False}],
+        "pagination": {
+            "limit": 50,
+            "has_more": True,
+            "next_token": "token-page-2",
+        },
+        "execution_time": 0.02,
+    }
+    mock_resp = mock_response(200, json_data=expected_response)
+    client._mock_httpx_instance.request.return_value = mock_resp
+
+    result = client.documents.fetch_text_data(
+        namespace_name=TEST_NAMESPACE,
+        limit=50,
+        next_token="token-page-1",
+    )
+
+    client._mock_httpx_instance.request.assert_called_once_with(
+        method="GET",
+        url=f"/namespaces/{TEST_NAMESPACE}/documents/fetch-text-data",
+        json=None,
+        params={"limit": 50, "next_token": "token-page-1"},
+    )
+    assert result["pagination"]["has_more"] is True
+    assert result["pagination"]["next_token"] == "token-page-2"
+
+
+@pytest.mark.parametrize("invalid_limit", [0, 101, -1, 1.5])
+def test_fetch_text_data_invalid_limit(client, invalid_limit):
+    """Test client-side validation for limit."""
+    with pytest.raises(InvalidInputError, match="limit"):
+        client.documents.fetch_text_data(
+            namespace_name=TEST_NAMESPACE,
+            limit=invalid_limit,
+        )
 
 
 def test_fetch_text_data_namespace_not_found(client, mocker, mock_response):

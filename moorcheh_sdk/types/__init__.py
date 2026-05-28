@@ -17,6 +17,7 @@ from .document import (
     FileUploadResponse,
     ListFilesResponse,
     TextDataItem,
+    TextDataPagination,
     TextDataStatistics,
 )
 from .namespace import Namespace, NamespaceCreateResponse, NamespaceListResponse
@@ -47,6 +48,7 @@ __all__ = [
     "DocumentGetResponse",
     "FetchTextDataResponse",
     "TextDataItem",
+    "TextDataPagination",
     "TextDataStatistics",
     "FileDeleteResponse",
     "FileDeleteResult",

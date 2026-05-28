@@ -89,6 +89,7 @@ async def test_documents_fetch_text_data(client):
         "namespace": "test",
         "statistics": {"total_items": 0},
         "items": [],
+        "pagination": {"limit": 100, "has_more": False, "next_token": None},
         "execution_time": 0.01,
     }
 
@@ -105,6 +106,32 @@ async def test_documents_fetch_text_data(client):
         assert kwargs["method"] == "GET"
         assert kwargs["path"] == "/namespaces/test/documents/fetch-text-data"
         assert kwargs["params"] is None
+
+
+@pytest.mark.asyncio
+async def test_documents_fetch_text_data_pagination(client):
+    mock_response = {
+        "status": "success",
+        "namespace": "test",
+        "items": [],
+        "pagination": {"limit": 25, "has_more": True, "next_token": "next"},
+    }
+
+    with patch.object(client, "request", new_callable=AsyncMock) as mock_request:
+        mock_request.return_value = MagicMock(
+            status_code=200, json=lambda: mock_response
+        )
+
+        await client.documents.fetch_text_data(
+            namespace_name="test",
+            limit=25,
+            next_token="prev",
+        )
+
+        assert mock_request.call_args.kwargs["params"] == {
+            "limit": 25,
+            "next_token": "prev",
+        }
 
 
 @pytest.mark.asyncio
