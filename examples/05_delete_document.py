@@ -86,7 +86,7 @@ def main():
                         f" '{document_id_to_delete}'. ✅"
                     )
                 else:
-                    # This case might happen if the ID didn't exist but the call succeed
+                    # This case might happen if the ID didn't exist but the call succeeded
                     logger.warning(
                         f"Deletion request processed, but ID '{document_id_to_delete}'"
                         " might not have been present."
